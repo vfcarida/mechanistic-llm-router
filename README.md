@@ -126,5 +126,5 @@ pytest tests/ --cov=src/mechanistic_router
 > Este trabalho é derivado da literatura recente de Routing avançado (Ong et al., 2025; Ding et al., 2024), convertendo insights abstratos da arquitetura *Shared Trunk* em um pipeline viável de engenharia.
 
 <div align="center">
-  <small>Licenciado sob MIT. Construído com 🤍 por Arquitetos de Inteligência Artificial.</small>
+  <small>Licenciado sob MIT.</small>
 </div>
