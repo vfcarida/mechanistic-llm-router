@@ -52,7 +52,7 @@ def generate_report(
         return "█" * filled + "░" * (bar_len - filled)
 
     logger.info("\n" + "═" * 78)
-    logger.info("  SharedTrunkNet – Relatório Executivo da PoC")
+    logger.info("  Cost-Optimal-Mechanistic-Router – Relatório Executivo da PoC")
     logger.info("  Roteamento Mecanístico via Prefill · Desacoplamento Encoder-Target")
     logger.info("═" * 78)
     
@@ -60,19 +60,19 @@ def generate_report(
     logger.info("  " + "─" * 76)
     logger.info(f"  Frontier Only (Baseline)            $ {cost_frontier:8.2f} $ {cost_frontier/n_samples:7.4f}    {acc_frontier*100:5.2f}%")
     logger.info(f"  Oráculo (Seleção Perfeita)          $ {cost_oracle:8.2f} $ {cost_oracle/n_samples:7.4f}    {acc_oracle*100:5.2f}%")
-    logger.info(f"  SharedTrunkNet Router               $ {cost_router:8.2f} $ {cost_router/n_samples:7.4f}    {acc_router*100:5.2f}%")
+    logger.info(f"  Cost-Optimal-Mechanistic-Router     $ {cost_router:8.2f} $ {cost_router/n_samples:7.4f}    {acc_router*100:5.2f}%")
 
     logger.info("\n  " + "─" * 76)
     logger.info("  MÉTRICAS DE EFICIÊNCIA")
     logger.info("  " + "─" * 76)
-    logger.info(f"  Economia de custo (SharedTrunkNet vs Frontier):   {savings_vs_frontier:5.2f}%")
+    logger.info(f"  Economia de custo (Cost-Optimal-Mechanistic-Router vs Frontier):   {savings_vs_frontier:5.2f}%")
     logger.info(f"  Economia de custo (Oráculo vs Frontier):          {oracle_savings:5.2f}%")
     logger.info(f"  Proximidade ao Oráculo (custo):                  {oracle_proximity:5.2f}%")
     logger.info(f"\n  Acurácia do pior cenário (SLM em tarefas complexas): {pior_cenario_acc*100:5.2f}%")
-    logger.info(f"  Ganho de acurácia (SharedTrunkNet vs pior cenário):   +{ganho_acuracia*100:5.2f}%")
+    logger.info(f"  Ganho de acurácia (Cost-Optimal-Mechanistic-Router vs pior cenário):   +{ganho_acuracia*100:5.2f}%")
 
     logger.info("\n  " + "─" * 76)
-    logger.info("  DISTRIBUIÇÃO DE ROTEAMENTO (SharedTrunkNet)")
+    logger.info("  DISTRIBUIÇÃO DE ROTEAMENTO (Cost-Optimal-Mechanistic-Router)")
     logger.info("  " + "─" * 76)
     
     for name in MODEL_POOL.keys():
@@ -86,7 +86,7 @@ def generate_report(
     meta_status = f"✓ Meta de economia > 70%: ATINGIDA ({savings_vs_frontier:.2f}%)" if savings_vs_frontier >= 70 else f"△ Meta de economia > 70%: Em progresso ({savings_vs_frontier:.2f}%)"
     logger.info(f"  {meta_status}")
     logger.info(f"  ✓ Proximidade ao Oráculo: {oracle_proximity:.1f}%")
-    logger.info("\n  O roteador mecanístico SharedTrunkNet demonstrou capacidade de")
+    logger.info("\n  O roteador mecanístico Cost-Optimal-Mechanistic-Router demonstrou capacidade de")
     logger.info(f"  reduzir custos inferenciais em {savings_vs_frontier:.2f}% mantendo")
     logger.info(f"  acurácia de {acc_router*100:.2f}%, validando a hipótese de que")
     logger.info("  sinais de prefill (d_eff, Fisher J) são preditores eficazes para")
@@ -95,7 +95,7 @@ def generate_report(
 
 
 def main():
-    logger.info("\n⚡ SharedTrunkNet – Mechanistic LLM Router PoC")
+    logger.info("\n⚡ Cost-Optimal-Mechanistic-Router – Mechanistic LLM Router PoC")
     logger.info("  Inicializando componentes...\n")
     
     # 1. Dataset
@@ -177,7 +177,7 @@ def main():
     
     logger.info(f"        → Frontier Only:    custo=${cost_frontier:.2f}, acc={acc_frontier*100:.2f}%")
     logger.info(f"        → Oráculo:          custo=${cost_oracle:.2f}, acc={acc_oracle*100:.2f}%")
-    logger.info(f"        → SharedTrunkNet:   custo=${cost_router:.2f}, acc={acc_router*100:.2f}%")
+    logger.info(f"        → Cost-Optimal-Mechanistic-Router: custo=${cost_router:.2f}, acc={acc_router*100:.2f}%")
     
     logger.info("\n  [5/5] Gerando relatório executivo...\n")
     
@@ -201,7 +201,7 @@ def main():
         logger.info("")
         
     logger.info("══════════════════════════════════════════════════════════════════════════════")
-    logger.info("  PoC finalizada. SharedTrunkNet Mechanistic Router v0.1.0 (Modular)")
+    logger.info("  PoC finalizada. Cost-Optimal-Mechanistic-Router v0.1.0 (Modular)")
     logger.info("══════════════════════════════════════════════════════════════════════════════\n")
 
 if __name__ == "__main__":

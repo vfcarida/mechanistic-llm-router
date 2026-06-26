@@ -1,6 +1,6 @@
-# SharedTrunkNet – Mechanistic LLM Router
+# Cost-Optimal-Mechanistic-Router – Mechanistic LLM Router
 
-Este repositório contém a Prova de Conceito (PoC) para o roteador mecanístico **SharedTrunkNet**. Ao contrário dos roteadores semânticos tradicionais, que baseiam suas decisões no espaço de *embeddings* (o "significado" do prompt), esta abordagem captura a **complexidade intrínseca do processamento** através da análise do prefill (as ativações das camadas ocultas) num *encoder* leve.
+Este repositório contém a Prova de Conceito (PoC) para o roteador mecanístico **Cost-Optimal-Mechanistic-Router**. Ao contrário dos roteadores semânticos tradicionais, que baseiam suas decisões no espaço de *embeddings* (o "significado" do prompt), esta abordagem captura a **complexidade intrínseca do processamento** através da análise do prefill (as ativações das camadas ocultas) num *encoder* leve.
 
 A abordagem baseia-se no princípio de **Encoder-Target Decoupling** para tomar decisões rigorosas de custo-eficiência.
 
@@ -8,7 +8,7 @@ A abordagem baseia-se no princípio de **Encoder-Target Decoupling** para tomar 
 
 Roteadores de embeddings tradicionais freqüentemente falham em distinguir consultas curtas porém difíceis ("Quais as implicações fiscais de...") de consultas curtas triviais ("Qual meu saldo?"). 
 
-Ao usar um simulador de *prefill*, o SharedTrunkNet detecta assinaturas matemáticas que predizem com alta precisão se um SLM (Pequeno Modelo de Linguagem) conseguirá processar a requisição ou se ela precisará escalar para um modelo de fronteira (Frontier LLM).
+Ao usar um simulador de *prefill*, o Cost-Optimal-Mechanistic-Router detecta assinaturas matemáticas que predizem com alta precisão se um SLM (Pequeno Modelo de Linguagem) conseguirá processar a requisição ou se ela precisará escalar para um modelo de fronteira (Frontier LLM).
 
 ## 🧮 Sinais Matemáticos Extraídos
 
@@ -40,7 +40,7 @@ python scripts/run_poc.py
 Isto executará o pipeline completo:
 1. Geração de um dataset financeiro representativo (55% rotina, 30% moderado, 15% complexo).
 2. Simulação do *SharedTrunkEncoder*.
-3. Avaliação contra as rotas de *Oráculo* vs *SharedTrunkNet*.
+3. Avaliação contra as rotas de *Oráculo* vs *Cost-Optimal-Mechanistic-Router*.
 4. Relatório executivo de economia de custos.
 
 ## 🧪 Testes
