@@ -39,6 +39,13 @@ class MechanisticRouter:
             model_pool (dict[str, TargetModel]): Dicionário de LLMs disponíveis.
             config (RouterConfig): Objeto de injeção de parâmetros (limiares e orçamento).
         """
+        if not isinstance(encoder, SharedTrunkEncoder):
+            raise TypeError("encoder deve ser uma instância de SharedTrunkEncoder.")
+        if not isinstance(model_pool, dict) or not all(isinstance(k, str) and isinstance(v, TargetModel) for k, v in model_pool.items()):
+            raise TypeError("model_pool deve ser um dicionário mapeando string para TargetModel.")
+        if not isinstance(config, RouterConfig):
+            raise TypeError("config deve ser uma instância de RouterConfig.")
+
         self.encoder = encoder
         self.model_pool = model_pool
         self.config = config
@@ -102,8 +109,10 @@ class MechanisticRouter:
         Returns:
             tuple[torch.Tensor, torch.Tensor]: As matrizes sintéticas de sucesso e falha.
         """
-        # Usa a representação agregada (Média nas camadas)
-        base_norm = torch.stack(layer_activations).mean(dim=0).squeeze(0)
+        # Pools over the sequence dimension for each layer to get [batch_size, hidden_dim]
+        pooled_layers = [act.mean(dim=1) for act in layer_activations]
+        # Now stack and take mean across layers, then squeeze batch to get [hidden_dim]
+        base_norm = torch.stack(pooled_layers).mean(dim=0).squeeze(0)
         
         complexity_order = list(TaskComplexity)
         task_idx = complexity_order.index(complexity)
@@ -120,9 +129,12 @@ class MechanisticRouter:
         n_samples_per_class = 20
         delta = competence * 0.5 
 
-        # Semente estática para determinismo por alvo (garante estabilidade no pool)
+        # Deterministic, platform-independent seeding using MD5 hashing of model name
+        import hashlib
+        name_hash = int(hashlib.md5(model.name.encode("utf-8")).hexdigest(), 16)
+
         rng = torch.Generator()
-        rng.manual_seed(hash(model.name) % (2**31))
+        rng.manual_seed(name_hash % (2**31))
 
         # Espalhamento aumenta conforme a competência cai
         noise_scale = 0.3 * (1.0 - competence + 0.1)
@@ -156,11 +168,18 @@ class MechanisticRouter:
             tuple[str, dict]: O nome do modelo vencedor e o rastreio (debug) dos
                 sinais latentes de cada modelo da pool.
         """
+        if not isinstance(prompt_text, str):
+            raise TypeError("prompt_text deve ser uma string.")
+        if not isinstance(complexity, TaskComplexity):
+            raise TypeError("complexity deve ser do tipo TaskComplexity.")
+
         input_tensor = self._prompt_to_tensor(prompt_text)
         _, layer_activations = self.encoder(input_tensor)
 
         # 1. Dimensionalidade Efetiva Média (d_eff) 
-        d_eff_values = [compute_effective_dimensionality(act) for act in layer_activations]
+        # Squeeze out the batch dimension to get a 2D activation matrix [seq_len, hidden_dim]
+        # per layer, capturing the sequence trajectory of the prompt.
+        d_eff_values = [compute_effective_dimensionality(act.squeeze(0)) for act in layer_activations]
         d_eff_mean = float(np.mean(d_eff_values))
         complexity_signal = min(d_eff_mean / (self.config.hidden_dim * 0.5), 1.0)
 

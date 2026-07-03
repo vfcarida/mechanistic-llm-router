@@ -1,6 +1,6 @@
 <div align="center">
   <h1>⚡ Cost-Optimal-Mechanistic-Router</h1>
-  <p><em>Roteamento Inteligente de LLMs via Encoder-Target Decoupling e Análise de Prefill</em></p>
+  <p><em>High-Performance LLM Routing via Encoder-Target Decoupling & Prefill Probing</em></p>
 
   ![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
   ![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)
@@ -11,89 +11,108 @@
 
 ---
 
-## 📖 Visão Executiva
+## 📖 Executive Summary
 
-A inteligência por trás de sistemas multi-modelo (Roteadores LLM) determina a viabilidade econômica de operações de IA em larga escala. Roteadores semânticos tradicionais roteiam com base em heurísticas rasas. O **Cost-Optimal-Mechanistic-Router** (antigo SharedTrunkNet) revoluciona este pipeline com o **Encoder-Target Decoupling**.
+The economic feasibility of large-scale AI operations is governed by the intelligence of multi-model orchestration. Conventional semantic routers rely on shallow text-embedding heuristics, incurring latency and overhead. 
 
-Em nossa versão mais recente, introduzimos suporte **Nativo a PyTorch para Decomposição de Valores Singulares (SVD)** e vetorização matemática. Isso elimina o gargalo catastrófico de quebra de grafo na CPU, permitindo inferências seguras de dimensionalidade topológica diretamente na GPU (ou aceleradas via CPU tensor math), além de simulação de tokenização determinística resistente a injeções de nulos e matrizes singulares corrompidas.
+The **Cost-Optimal-Mechanistic-Router** utilizes **Encoder-Target Decoupling** to probe the base LLM’s hidden states during the prefill phase. By analyzing the token sequence's topological structure and predicting task complexity prior to full autoregressive generation, we route queries dynamically to the most cost-effective competent model.
+
+In this audited version:
+* **Token Trajectory $d_{eff}$ Mapping:** Resolves the sequence dimension collapse bug. Effective dimensionality is evaluated on unpooled sequence activations of shape `[seq_len, hidden_dim]` instead of mean-pooled `[1, hidden_dim]` vectors, preserving actual token trajectories.
+* **Deterministic Hashing:** RNG seeds for synthetic Fisher activations are computed via md5 hashing, securing platform-independent deterministic stability.
+* **Production-Ready Validation:** Enforces strict runtime parameter typing to safeguard operational state transitions under extreme conditions.
 
 > [!TIP]
-> **Impacto no Negócio:** Na PoC corporativa, a arquitetura alcançou **78,75% de redução de custo inferencial** com acurácia rigorosamente compatível ao "Oráculo Perfeito" (acerto >91%). A nova refatoração de Álgebra Linear nativa previne interrupções (Out-of-Memory / NaN Entropies) e impulsiona o throughput (TPS).
+> **Business Impact:** In our financial mock dataset benchmarks (*BERTaú* domain), this routing logic demonstrates a **78.75% reduction in inferential cost** compared to defaulting all queries to the frontier oracle, while matching Oracle-level accuracy (>91%).
 
 ---
 
-## 🧠 Arquitetura Mecanística
+## 🧠 Mechanistic Architecture
+
+The decoupled encoder-target pipeline maps queries to model routes using low-level tensor activations:
 
 ```mermaid
 graph TD
-    A[Prompt do Usuário] --> B(SharedTrunk Encoder<br><i>Simulador de Prefill O(1) determinístico</i>)
+    A[User Prompt Query] --> B(SharedTrunk Encoder<br><i>Prefill Simulator stage</i>)
     
-    subgraph Sinais Topológicos PyTorch
-        B --> C[Dimensionalidade Efetiva d_eff<br><i>torch.linalg.svd & Shannon Entropy</i>]
-        B --> D[Separabilidade de Fisher J<br><i>Gating Threshold</i>]
+    subgraph Topological Signals (PyTorch)
+        B --> C["Effective Dimensionality (d_eff)<br><i>SVD & Shannon Entropy over [seq_len, hidden_dim]</i>"]
+        B --> D["Fisher Separability (J)<br><i>Intra/Inter-Class Variance Gating</i>"]
     end
     
     C --> E{Mechanistic Router}
     D --> E
     
-    subgraph Orquestração e Seleção
-        E -- Tarefa Rotineira --> F((SLM Local<br>$0.02))
-        E -- Tarefa Moderada --> G((Mid-Tier LLM<br>$0.25))
-        E -- Tarefa Complexa --> H((Frontier Oracle<br>$1.50))
+    subgraph Target Model Pool
+        E -- Routine / Competent --> F((SLM Local<br>$0.02))
+        E -- Moderate / Competent --> G((Mid-Tier LLM<br>$0.25))
+        E -- Complex / Exception --> H((Frontier Oracle<br>$1.50))
     end
 ```
 
-### O Motor Matemático (Sinais Extraídos)
-
-1. **Dimensionalidade Efetiva ($d_{eff}$)**  
-   Mede a entropia dos valores singulares do espaço latente, indicando a "complexidade cognitiva" imediata exigida para preencher o prompt. Se colapsa em uma dimensão, é uma tarefa rotineira.
-2. **Separabilidade de Fisher ($J$)**  
-   Filtra modelos incompetentes descartando aqueles cujos clusters simulados de falha e sucesso se sobrepõem topologicamente.
-   
 ---
 
-## ⚙️ Instalação e Execução
+## 🧮 Mathematical Engine & Formulas
 
-### Pré-requisitos
-- Python 3.10 ou superior
-- Ambiente virtual (`venv` ou `conda`)
+### 1. Effective Dimensionality ($d_{eff}$)
+Computes the spectrum entropy of singular values of the latent activations $A \in \mathbb{R}^{S \times D}$ where $S$ is the sequence length and $D$ is the hidden dimensionality.
+$$s = \text{SVD}(A)$$
+$$E_i = s_i^2 \quad \text{and} \quad p_i = \frac{E_i}{\sum_j E_j}$$
+$$H = -\sum_{i} p_i \ln(p_i)$$
+$$d_{eff} = \exp(H)$$
+
+### 2. Fisher Separability ($J$)
+Measures structural competence by checking if success and failure clusters are linearly separable in the latent representation space.
+$$J = \frac{1}{D} \sum_{d=1}^{D} \frac{(\mu_{\text{success}, d} - \mu_{\text{failure}, d})^2}{\sigma^2_{\text{success}, d} + \sigma^2_{\text{failure}, d} + \epsilon}$$
+
+### 3. Elastic Cost Ponderation
+Normalized inverse cost is formulated as:
+$$\text{invcost}_{\text{norm}} = \frac{\frac{1}{\text{cost}} - \frac{1}{\text{cost}_{\text{max}}}}{\frac{1}{\text{cost}_{\text{min}}} - \frac{1}{\text{cost}_{\text{max}}}}$$
+
+---
+
+## ⚙️ Installation & Usage
+
+### Setup Environment
+* Python 3.10+ is required.
 
 ```bash
-# Clone o repositório
-git clone https://github.com/empresa/cost-optimal-mechanistic-router.git
-cd cost-optimal-mechanistic-router
+# Clone the repository
+git clone https://github.com/your-org/mechanistic-llm-router.git
+cd mechanistic-llm-router
 
-# Crie e ative o ambiente virtual
+# Create and activate virtual environment
 python -m venv venv
-source venv/bin/activate  # ou .\venv\Scripts\activate no Windows
+# On Linux/macOS:
+source venv/bin/activate
+# On Windows PowerShell:
+# .\venv\Scripts\Activate.ps1
 
-# Instale no modo de desenvolvimento com as dependências de testes
+# Install in development mode with test dependencies
 pip install -e .[dev]
 ```
 
-### Rodando o Simulador (PoC)
-
-O simulador embutido roda a suíte de avaliação completa contra um mock do *BERTaú* (Atendimento Financeiro).
+### Run PoC Simulation
+Run the automated mock financial evaluation (200 records distributed across Routine, Moderate, and Complex tasks):
 
 ```bash
-# Com o ambiente virtual ativado
 python scripts/run_poc.py
 ```
 
 ---
 
-## 🧪 Qualidade e Testes (QA)
+## 🧪 Testing and QA
 
-A arquitetura contém defesas estritas contra instabilidade numérica, com cobertura total das equações de entropia e SVD contra tensores rank-deficientes e infinitos.
+The test suite checks model boundaries, strict type checking, SVD fallbacks for degenerate inputs, and deterministic seeding behaviors.
+
+Since `pytest` is configured via `pyproject.toml`, run directly from the root:
 
 ```bash
-# Rodar testes de unidade e condições de contorno
-$env:PYTHONPATH="src"
-pytest tests/ -v
+pytest -v
 ```
 
 ---
 
 <div align="center">
-  <small>Desenvolvido com Foco em Performance Escalonável e IA Contemporânea.</small>
+  <small>Optimized for Ultra-Low Latency LLMOps and Financial AI Infrastructure.</small>
 </div>

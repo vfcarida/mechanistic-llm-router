@@ -50,8 +50,8 @@ class SharedTrunkEncoder(nn.Module):
         Returns:
             tuple[torch.Tensor, list[torch.Tensor]]: 
                 - O tensor de saída final pós-prefill.
-                - Lista contendo a ativação condensada (mean pooling) de *cada* 
-                  uma das camadas intermediárias (usada para o Fisher J).
+                - Lista contendo a ativação bruta (unpooled) de *cada* 
+                  uma das camadas intermediárias, com formato [batch_size, seq_len, hidden_dim].
         """
         if input_ids.numel() == 0:
             raise ValueError("O tensor de entrada (input_ids) não pode estar vazio.")
@@ -62,10 +62,9 @@ class SharedTrunkEncoder(nn.Module):
         for layer in self.layers:
             x = layer(x)
             
-            # Pooling espacial (média ao longo do comprimento da sequência)
-            # Produz um vetor representativo de tamanho [batch, hidden_dim]
-            # que engloba o "estado latente do conceito" daquela camada.
-            pooled_x = x.mean(dim=1)
-            layer_activations.append(pooled_x)
+            # Store the raw unpooled hidden state activation of shape [batch_size, seq_len, hidden_dim].
+            # This preserves the full token trajectory so that downstream signals like
+            # Effective Dimensionality (d_eff) can compute rank/entropy correctly across tokens.
+            layer_activations.append(x)
 
         return x, layer_activations

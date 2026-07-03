@@ -63,3 +63,37 @@ def test_empty_prompt_handling(router):
     selected, details = router.route(prompt, TaskComplexity.ROUTINE)
     # Por segurança, deve conseguir gerar uma predição topológica com token <pad>
     assert selected in MODEL_POOL
+
+
+def test_router_strict_validation(router):
+    """Verifica se o router lança exceções de tipo para parâmetros inválidos."""
+    with pytest.raises(TypeError, match="prompt_text deve ser uma string"):
+        router.route(123, TaskComplexity.ROUTINE)  # type: ignore[arg-type]
+    
+    with pytest.raises(TypeError, match="complexity deve ser do tipo TaskComplexity"):
+        router.route("Qual o meu saldo?", "ROUTINE")  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="encoder deve ser uma instância de SharedTrunkEncoder"):
+        MechanisticRouter("not_an_encoder", MODEL_POOL, DEFAULT_CONFIG)  # type: ignore[arg-type]
+
+
+def test_effective_dimensionality_is_dynamic(router):
+    """Garante que a dimensionalidade efetiva d_eff varie com a complexidade do prompt e não fique estática em 1.0."""
+    prompt_short = "Saldo."
+    _, details_short = router.route(prompt_short, TaskComplexity.ROUTINE)
+    d_eff_short = details_short["SLM-BERTau-Local"]["d_eff_mean"]
+
+    prompt_long = (
+        "Preciso de uma análise completa do meu perfil de crédito considerando "
+        "DTI, LTV, histórico de utilização de crédito rotativo e projeção de "
+        "capacidade de pagamento para os próximos 12 meses."
+    )
+    _, details_long = router.route(prompt_long, TaskComplexity.COMPLEX)
+    d_eff_long = details_long["SLM-BERTau-Local"]["d_eff_mean"]
+
+    # d_eff deve ser dinâmico e maior para prompts mais longos/complexos
+    assert d_eff_short != d_eff_long
+    # d_eff do prompt longo deve ser maior devido ao espalhamento na trajetória de tokens
+    assert d_eff_long > d_eff_short
+    # Não devem estar travados em 1.0
+    assert d_eff_long > 1.0

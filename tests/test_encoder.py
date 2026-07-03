@@ -19,9 +19,9 @@ def test_encoder_output_shapes(encoder):
     # 2. Número de ativações capturadas deve igualar as camadas do config
     assert len(layer_acts) == DEFAULT_CONFIG.num_prefill_layers
     
-    # 3. Cada ativação deve ser pareada (mean pooled -> [batch, hidden_dim])
+    # 3. Cada ativação deve ser a ativação bruta (unpooled -> [batch, seq_len, hidden_dim])
     for act in layer_acts:
-        assert act.shape == (2, DEFAULT_CONFIG.hidden_dim)
+        assert act.shape == (2, 5, DEFAULT_CONFIG.hidden_dim)
 
 def test_encoder_empty_prompt(encoder):
     """Garante que falhamos graciosamente ao receber prompt sem tokens."""
