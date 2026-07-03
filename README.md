@@ -11,7 +11,7 @@
 
 ---
 
-## 📖 Executive Summary
+## 📖 Strategic Overview
 
 The economic feasibility of large-scale AI operations is governed by the intelligence of multi-model orchestration. Conventional semantic routers rely on shallow text-embedding heuristics, incurring latency and overhead. 
 
