@@ -57,8 +57,9 @@ class MechanisticRouter:
     def _prompt_to_tensor(self, text: str) -> torch.Tensor:
         """Processa a query crua (String) num tensor de token IDs simulado.
 
-        Usa um hashing estocástico (limitado ao vocabulário) para não depender
-        de bibliotecas pesadas de tokenização na simulação atual.
+        Utiliza decodificação determinística (Soma de bytes UTF-8) no lugar de `hash()`,
+        para garantir reproducibilidade (visto que `hash()` em Python tem seed randômica
+        por sessão).
 
         Args:
             text (str): A entrada crua do usuário.
@@ -66,11 +67,15 @@ class MechanisticRouter:
         Returns:
             torch.Tensor: Tensor shape [1, seq_len]
         """
-        if not text.strip():
+        clean_text = text.strip()
+        if not clean_text:
             # Edge case preventivo
             return torch.tensor([[0]], dtype=torch.long)
 
-        tokens = [hash(word) % self.encoder.vocab_size for word in text.split()[:50]]
+        # Extração determinística de tokens limitados
+        words = clean_text.split()[:50]
+        tokens = [(sum(bytearray(word, 'utf-8')) % self.encoder.vocab_size) for word in words]
+        
         if not tokens:
             tokens = [0]
         return torch.tensor([tokens], dtype=torch.long)

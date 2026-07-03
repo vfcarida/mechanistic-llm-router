@@ -22,32 +22,32 @@ def compute_effective_dimensionality(activation: torch.Tensor) -> float:
         float: Valor contínuo representando o d_eff (>= 1.0). Se ocorrer instabilidade
             numérica na matriz, retorna 1.0 como fallback seguro.
     """
-    act_np = activation.detach().cpu().numpy()
-    if act_np.ndim == 1:
-        act_np = act_np.reshape(1, -1)
+    if activation.ndim == 1:
+        activation = activation.unsqueeze(0)
 
     try:
-        # Extração do Espectro via SVD
-        _, s, _ = np.linalg.svd(act_np, full_matrices=False)
-    except np.linalg.LinAlgError:
+        # Extração do Espectro via SVD puro em PyTorch (Preserva GPU e Grafo de Autograd)
+        _, s, _ = torch.linalg.svd(activation, full_matrices=False)
+    except RuntimeError:
+        # Fallback caso a decomposição SVD falhe (matrizes singulares instáveis)
         return 1.0
 
     # Energia Espectral
     energy = s ** 2
-    total_energy = np.sum(energy)
+    total_energy = torch.sum(energy)
     if total_energy < 1e-10:
         return 1.0
 
     # Distribuição de Probabilidade da Energia
     p = energy / total_energy
-    p = p[p > 1e-10]  # Filtragem para evitar log(0)
+    p = p[p > 1e-10]  # Filtragem restrita para evitar log(0) e NaN
     
-    # Entropia de Shannon
-    entropy = -np.sum(p * np.log(p))
+    # Entropia de Shannon (Vetorizada no PyTorch)
+    entropy = -torch.sum(p * torch.log(p))
 
     # Re-exponenciação para o domínio de dimensionalidade
-    d_eff = np.exp(entropy)
-    return float(d_eff)
+    d_eff = torch.exp(entropy)
+    return float(d_eff.item())
 
 
 def compute_fisher_separability(

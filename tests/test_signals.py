@@ -52,3 +52,18 @@ def test_fisher_separability_numerical_stability():
     # Será um número gigantesco devido à variância zero, mas não NaN
     assert not np.isnan(j_value)
     assert j_value > 1000.0
+
+def test_effective_dimensionality_rank_deficient():
+    """Garante que matrizes colapsadas (singulares) sejam traduzidas com fallback seguro."""
+    activations = torch.ones((10, 10))
+    d_eff = compute_effective_dimensionality(activations)
+    # Apenas a primeira dimensão tem energia, as demais são zero (ou próximas de zero)
+    assert 1.0 <= d_eff < 1.1
+
+def test_effective_dimensionality_nan_infinity():
+    """Verifica proteção contra tensores corrompidos (Injeções Nulas / Inf)."""
+    # Matriz com valores infinitos
+    activations = torch.tensor([[float("inf"), 1.0], [1.0, 0.0]])
+    d_eff = compute_effective_dimensionality(activations)
+    # SVD com valores infinitos levanta RuntimeError (antigo LinAlgError), deve cair no fallback
+    assert d_eff == 1.0
