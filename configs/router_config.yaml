@@ -1,0 +1,13 @@
+model_pool:
+  SLM-BERTau-Local:
+    cost: 0.02
+    base_accuracy: 0.91
+    complexity_ceiling: ROUTINE
+  LLM-Mid-Tier:
+    cost: 0.25
+    base_accuracy: 0.88
+    complexity_ceiling: MODERATE
+  LLM-Frontier-Oracle:
+    cost: 1.50
+    base_accuracy: 0.97
+    complexity_ceiling: COMPLEX

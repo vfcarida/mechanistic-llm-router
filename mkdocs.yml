@@ -1,0 +1,31 @@
+site_name: Mechanistic LLM Router Documentation
+site_description: Enterprise AI Gateway for LLM Routing via Encoder-Target Decoupling, Prefill Probing & Sparse Autoencoders
+site_author: Vinicius Carida
+
+theme:
+  name: material
+  palette:
+    - scheme: slate
+      primary: indigo
+      accent: blue
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - content.code.copy
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [src]
+
+nav:
+  - Home: index.md
+  - Architecture: architecture.md
+  - API Reference:
+      - Routers: reference/routers.md
+      - Probing Engine: reference/probing.md
+      - Gateway REST Server: reference/gateway.md
+      - Configuration: reference/config.md

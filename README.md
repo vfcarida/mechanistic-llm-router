@@ -1,118 +1,176 @@
 <div align="center">
-  <h1>⚡ Cost-Optimal-Mechanistic-Router</h1>
-  <p><em>High-Performance LLM Routing via Encoder-Target Decoupling & Prefill Probing</em></p>
+  <h1>⚡ Mechanistic LLM Router</h1>
+  <p><em>High-Performance LLM Routing via Encoder-Target Decoupling, Prefill Probing, & SAE Circuit Analysis</em></p>
 
   ![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
   ![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)
-  ![Accelerated SVD](https://img.shields.io/badge/Backend-Native_GPU_SVD-8a2be2.svg)
-  ![QA Edge Cases](https://img.shields.io/badge/QA_Tests-Passing-brightgreen.svg)
+  ![Pydantic](https://img.shields.io/badge/Pydantic-v2-green.svg)
+  ![LiteLLM](https://img.shields.io/badge/Dispatcher-LiteLLM-purple.svg)
+  ![OpenTelemetry](https://img.shields.io/badge/Observability-OpenTelemetry-orange.svg)
   ![License](https://img.shields.io/badge/License-MIT-green.svg)
 </div>
 
 ---
 
-## 📖 Strategic Overview
+## 📖 Project Vision & Executive Summary
 
-The economic feasibility of large-scale AI operations is governed by the intelligence of multi-model orchestration. Conventional semantic routers rely on shallow text-embedding heuristics, incurring latency and overhead. 
+The economic feasibility and latency scaling of enterprise AI operations depend on intelligent multi-model orchestration. Standard semantic routers rely on shallow text-embedding heuristics or static cost thresholds, introducing latency overhead without understanding actual cognitive prompt complexity.
 
-The **Cost-Optimal-Mechanistic-Router** utilizes **Encoder-Target Decoupling** to probe the base LLM’s hidden states during the prefill phase. By analyzing the token sequence's topological structure and predicting task complexity prior to full autoregressive generation, we route queries dynamically to the most cost-effective competent model.
-
-In this audited version:
-* **Token Trajectory $d_{eff}$ Mapping:** Resolves the sequence dimension collapse bug. Effective dimensionality is evaluated on unpooled sequence activations of shape `[seq_len, hidden_dim]` instead of mean-pooled `[1, hidden_dim]` vectors, preserving actual token trajectories.
-* **Deterministic Hashing:** RNG seeds for synthetic Fisher activations are computed via md5 hashing, securing platform-independent deterministic stability.
-* **Production-Ready Validation:** Enforces strict runtime parameter typing to safeguard operational state transitions under extreme conditions.
+The **Mechanistic LLM Router** pioneers **Encoder-Target Decoupling** and deep mechanistic interpretability probing. By inspecting unpooled prefill hidden activation matrices $A \in \mathbb{R}^{S \times D}$, computing Effective Dimensionality ($d_{eff}$) spectrum entropy, evaluating Fisher Discriminant separability ($J$), and extracting Sparse Autoencoder (SAE) cognitive circuits, the router dynamically assigns queries to the most cost-optimal competent model.
 
 > [!TIP]
-> **Business Impact:** In our financial mock dataset benchmarks (*BERTaú* domain), this routing logic demonstrates a **78.75% reduction in inferential cost** compared to defaulting all queries to the frontier oracle, while matching Oracle-level accuracy (>91%).
+> **Enterprise Financial Impact:** Benchmarked on domain queries (*BERTaú* dataset), the Mechanistic Router achieves a **78.75% reduction in inferential cost** compared to defaulting all requests to the frontier oracle, while maintaining Oracle-level response accuracy (>91%).
 
 ---
 
 ## 🧠 Mechanistic Architecture
 
-The decoupled encoder-target pipeline maps queries to model routes using low-level tensor activations:
-
 ```mermaid
 graph TD
-    A[User Prompt Query] --> B(SharedTrunk Encoder<br><i>Prefill Simulator stage</i>)
-    
-    subgraph Topological Signals (PyTorch)
-        B --> C["Effective Dimensionality (d_eff)<br><i>SVD & Shannon Entropy over [seq_len, hidden_dim]</i>"]
-        B --> D["Fisher Separability (J)<br><i>Intra/Inter-Class Variance Gating</i>"]
+    A[User Prompt Query] --> B[SharedTrunk Encoder / Prefill Stage]
+    B --> C[TransformerLens Hook Manager]
+
+    subgraph Probing Engine
+        C --> D["Effective Dimensionality (d_eff)<br><i>SVD & Shannon Entropy over [seq_len, hidden_dim]</i>"]
+        C --> E["Fisher Separability (J)<br><i>Intra/Inter-Class Variance Gating</i>"]
+        C --> F["SAE Engine (SAELens)<br><i>Sparse Autoencoder Circuit Extraction</i>"]
     end
-    
-    C --> E{Mechanistic Router}
-    D --> E
-    
-    subgraph Target Model Pool
-        E -- Routine / Competent --> F((SLM Local<br>$0.02))
-        E -- Moderate / Competent --> G((Mid-Tier LLM<br>$0.25))
-        E -- Complex / Exception --> H((Frontier Oracle<br>$1.50))
+
+    D --> G{Mechanistic Router Strategy}
+    E --> G
+    F --> G
+
+    subgraph Strategy Pattern Pool
+        G --> H[CostPerformanceRouter]
+        G --> I[SemanticRouter]
+        G --> J[MechanisticRouter]
+    end
+
+    J --> K[LiteLLM Universal Dispatcher]
+
+    subgraph Target Endpoint Pool
+        K --> L((SLM Local - $0.02))
+        K --> M((Mid-Tier LLM - $0.25))
+        K --> N((Frontier Oracle - $1.50))
     end
 ```
 
 ---
 
-## 🧮 Mathematical Engine & Formulas
+## 🧮 Mathematical Engine & Formulations
 
 ### 1. Effective Dimensionality ($d_{eff}$)
-Computes the spectrum entropy of singular values of the latent activations $A \in \mathbb{R}^{S \times D}$ where $S$ is the sequence length and $D$ is the hidden dimensionality.
-$$s = \text{SVD}(A)$$
-$$E_i = s_i^2 \quad \text{and} \quad p_i = \frac{E_i}{\sum_j E_j}$$
-$$H = -\sum_{i} p_i \ln(p_i)$$
-$$d_{eff} = \exp(H)$$
+Calculates spectrum entropy over singular values of sequence activation matrices $A \in \mathbb{R}^{S \times D}$:
+$$\sigma = \text{SVD}(A)$$
+$$E_i = \sigma_i^2 \quad \text{and} \quad p_i = \frac{E_i}{\sum_j E_j}$$
+$$H = -\sum_{i} p_i \ln(p_i) \implies d_{eff} = \exp(H)$$
 
 ### 2. Fisher Separability ($J$)
-Measures structural competence by checking if success and failure clusters are linearly separable in the latent representation space.
+Measures structural competence by evaluating linear separability between success and failure clusters in latent representation space:
 $$J = \frac{1}{D} \sum_{d=1}^{D} \frac{(\mu_{\text{success}, d} - \mu_{\text{failure}, d})^2}{\sigma^2_{\text{success}, d} + \sigma^2_{\text{failure}, d} + \epsilon}$$
 
-### 3. Elastic Cost Ponderation
-Normalized inverse cost is formulated as:
-$$\text{invcost}_{\text{norm}} = \frac{\frac{1}{\text{cost}} - \frac{1}{\text{cost}_{\text{max}}}}{\frac{1}{\text{cost}_{\text{min}}} - \frac{1}{\text{cost}_{\text{max}}}}$$
+### 3. Non-Decreasing Convex Hull (Pareto Optimization)
+Graphs the cost-quality Pareto boundary curve mapping average query cost (x-axis) to response accuracy (y-axis), eliminating dominated router strategies.
 
 ---
 
-## ⚙️ Installation & Usage
+## ⚙️ Environment Configuration Reference
 
-### Setup Environment
-* Python 3.10+ is required.
+The router runtime environment is configured via YAML files (`configs/default_config.yaml`) or environment variables prefixed with `ROUTER_`:
+
+| Environment Variable | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `ROUTER_SEED` | `int` | `42` | Random seed for statistical reproducibility. |
+| `ROUTER_HIDDEN_DIM` | `int` | `128` | Latent space activation dimension size. |
+| `ROUTER_NUM_PREFILL_LAYERS` | `int` | `6` | Number of simulated prefill layers. |
+| `ROUTER_LAMBDA_BUDGET` | `float` | `0.68` | Cost-optimality balance weight (0.0 to 1.0). |
+| `ROUTER_FISHER_J_THRESHOLD` | `float` | `0.30` | Minimum Fisher J score required to pass Competence Gate. |
+| `ROUTER_EMBEDDING_DIM` | `int` | `384` | Vector dimension size for semantic router. |
+
+---
+
+## 🚀 Quickstart & Installation
+
+### Option 1: Local Python Package Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/mechanistic-llm-router.git
+git clone https://github.com/vfcarida/mechanistic-llm-router.git
 cd mechanistic-llm-router
 
 # Create and activate virtual environment
 python -m venv venv
-# On Linux/macOS:
-source venv/bin/activate
-# On Windows PowerShell:
-# .\venv\Scripts\Activate.ps1
+source venv/bin/activate  # On Windows: .\venv\Scripts\Activate.ps1
 
-# Install in development mode with test dependencies
+# Install in editable mode with development dependencies
 pip install -e .[dev]
 ```
 
-### Run PoC Simulation
-Run the automated mock financial evaluation (200 records distributed across Routine, Moderate, and Complex tasks):
+### Option 2: Docker Compose Observability Stack
+
+Launch the full containerized application, Prometheus, and Grafana monitoring stack:
 
 ```bash
-python scripts/run_poc.py
+docker-compose up --build -d
+```
+
+- **OpenAI REST Gateway API:** `http://localhost:8000/v1/chat/completions`
+- **Prometheus Metrics Endpoint:** `http://localhost:9090/metrics`
+- **Grafana Executive Dashboard:** `http://localhost:3000` (User: `admin`, Pass: `admin`)
+
+---
+
+## 💻 Python Code Snippet Usage
+
+```python
+import asyncio
+from mechanistic_router.config import DEFAULT_CONFIG
+from mechanistic_router.core.encoder import SharedTrunkEncoder
+from mechanistic_router.models.pool import MODEL_POOL
+from mechanistic_router.models.types import TaskComplexity
+from mechanistic_router.routers.mechanistic import MechanisticRouter
+from mechanistic_router.schemas.routing import RoutingRequest
+
+async def run_routing_example():
+    # Initialize prefill encoder and router
+    encoder = SharedTrunkEncoder(DEFAULT_CONFIG)
+    router = MechanisticRouter(encoder, MODEL_POOL, DEFAULT_CONFIG)
+
+    request = RoutingRequest(
+        prompt="Analyze my debt-to-income ratio and project credit score impact.",
+        task_complexity=TaskComplexity.COMPLEX
+    )
+
+    decision = await router.route(request)
+    print(f"Winning Target Route: {decision.selected_model}")
+    print(f"Estimated Cost: ${decision.estimated_cost_usd:.4f}")
+    print(f"Decision Latency: {decision.latency_ms:.2f} ms")
+
+if __name__ == "__main__":
+    asyncio.run(run_routing_example())
 ```
 
 ---
 
-## 🧪 Testing and QA
-
-The test suite checks model boundaries, strict type checking, SVD fallbacks for degenerate inputs, and deterministic seeding behaviors.
-
-Since `pytest` is configured via `pyproject.toml`, run directly from the root:
+## 🧪 Testing, Quality Assurance, & Benchmarking
 
 ```bash
-pytest -v
+# Run Ruff linter and formatter check
+ruff check .
+ruff format --check .
+
+# Run Mypy static type analysis
+mypy src/
+
+# Run Pytest suite with code coverage (Target >= 85%)
+pytest -v --cov=src/mechanistic_router --cov-fail-under=85
+
+# Execute LLMRouterBench evaluator & graph Pareto Convex Hull bounds
+python scripts/benchmark_evaluator.py
 ```
 
 ---
 
 <div align="center">
-  <small>Optimized for Ultra-Low Latency LLMOps and Financial AI Infrastructure.</small>
+  <small>Designed for High-Performance Enterprise LLMOps and Mechanistic Interpretability Research.</small>
 </div>

@@ -1,22 +1,21 @@
-def normalized_inverse_cost(cost: float, cost_min: float, cost_max: float) -> float:
-    """Calcula o Custo Inverso Normalizado para um modelo dentro de um Pool.
+"""Metrics Normalization and Performance Evaluation Helpers."""
 
-    Para garantir que modelos baratos tenham vantagem matemática competitiva
-    durante o 'Cost-Optimal Selection', invertemos o custo (1/C) e o
-    normalizamos linearmente para o intervalo [0, 1].
+
+def normalized_inverse_cost(cost: float, cost_min: float, cost_max: float) -> float:
+    """Calculates Normalized Inverse Cost (1/C) mapped to interval [0, 1].
+
+    Ensures lower cost models receive higher competitive advantage during scoring.
 
     Args:
-        cost (float): O custo nominal do modelo alvo.
-        cost_min (float): O custo mais barato disponível no pool inteiro.
-        cost_max (float): O custo mais caro disponível no pool inteiro.
+        cost: Nominal cost of target candidate model.
+        cost_min: Minimal cost available in full candidate pool.
+        cost_max: Maximal cost available in full candidate pool.
 
     Returns:
-        float: Valor [0.0, 1.0]. Um score mais alto representa um custo menor (melhor).
-               Retorna 0.5 fixo se todos os modelos tiverem o mesmo custo para
-               evitar divisão por zero.
+        Normalized score in [0.0, 1.0]. Returns 0.5 if all costs are uniform.
     """
     if cost <= 0.0 or cost_min <= 0.0:
-        raise ValueError("Custos de modelos devem ser estritamente positivos (>0).")
+        raise ValueError("Model costs must be strictly positive (> 0.0).")
 
     inv_c = 1.0 / cost
     inv_c_min = 1.0 / cost_min
@@ -24,26 +23,22 @@ def normalized_inverse_cost(cost: float, cost_min: float, cost_max: float) -> fl
 
     denominator = inv_c_min - inv_c_max
     if abs(denominator) < 1e-10:
-        return 0.5  # Neutralização caso o pool seja de preço único
+        return 0.5
 
     score = (inv_c - inv_c_max) / denominator
-    # Clamp safety para bounds flutuantes
     return max(0.0, min(float(score), 1.0))
 
 
 def normalized_accuracy(accuracy: float, accuracy_floor: float, accuracy_ceiling: float) -> float:
-    """Calcula a Acurácia Normalizada de um modelo.
-
-    Mapeia a expectativa de acurácia degradada do modelo para o intervalo [0, 1]
-    relativo ao pool, auxiliando na comparação multi-modelo.
+    """Calculates Normalized Accuracy mapped to interval [0, 1].
 
     Args:
-        accuracy (float): A acurácia bruta projetada [0.0, 1.0].
-        accuracy_floor (float): A pior acurácia base tolerável.
-        accuracy_ceiling (float): A maior acurácia base do melhor modelo do pool.
+        accuracy: Raw accuracy score.
+        accuracy_floor: Minimum baseline accuracy floor.
+        accuracy_ceiling: Maximum accuracy ceiling.
 
     Returns:
-        float: Score normalizado [0.0, 1.0].
+        Normalized accuracy score in [0.0, 1.0].
     """
     denominator = accuracy_ceiling - accuracy_floor
     if abs(denominator) < 1e-10:

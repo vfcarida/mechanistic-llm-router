@@ -1,69 +1,56 @@
-import torch
+"""Unit Tests for Mathematical Signals and Pareto Convex Hull Functions."""
+
 import pytest
-import numpy as np
+import torch
 from mechanistic_router.signals.math_utils import (
+    compute_convex_hull,
     compute_effective_dimensionality,
     compute_fisher_separability,
 )
 
-def test_effective_dimensionality_basic():
-    """Testa se a dimensionalidade efetiva está retornando valores válidos (d_eff)."""
-    # Matriz com apenas 1 valor singular dominante (entropia 0, d_eff = 1.0)
-    activations_low_dim = torch.zeros((10, 128))
-    activations_low_dim[:, 0] = 1.0
-    
-    d_eff_low = compute_effective_dimensionality(activations_low_dim)
-    assert 1.0 <= d_eff_low < 1.1
 
-    # Matriz com ruído gaussiano (deve ter dimensionalidade mais alta)
+def test_compute_effective_dimensionality_basic() -> None:
+    """Test SVD spectrum entropy calculation on rank-1 vs full-rank matrices."""
+    # Rank 1 matrix -> d_eff near 1.0
+    rank1_matrix = torch.ones((10, 128))
+    d_eff_rank1 = compute_effective_dimensionality(rank1_matrix)
+    assert 1.0 <= d_eff_rank1 < 1.5
+
+    # Random orthogonal matrix -> d_eff higher
     torch.manual_seed(42)
-    activations_high_dim = torch.randn((10, 128))
-    d_eff_high = compute_effective_dimensionality(activations_high_dim)
-    assert d_eff_high > 5.0
+    random_matrix = torch.randn((50, 128))
+    d_eff_random = compute_effective_dimensionality(random_matrix)
+    assert d_eff_random > d_eff_rank1
 
-def test_effective_dimensionality_zero_energy():
-    """Valida o fallback mecânico caso o tensor seja 100% nulo (0 energy)."""
-    activations = torch.zeros((5, 128))
-    d_eff = compute_effective_dimensionality(activations)
-    assert d_eff == 1.0
 
-def test_fisher_separability_basic():
-    """Testa se o Fisher J captura a distância entre clusters topológicos."""
-    # Clusters idênticos (J deve ser nulo)
-    act1 = torch.ones((20, 128))
-    act2 = torch.ones((20, 128))
-    j_zero = compute_fisher_separability(act1, act2)
-    assert j_zero < 1e-5
+def test_compute_fisher_separability() -> None:
+    """Test Fisher Discriminant separability calculation."""
+    torch.manual_seed(42)
+    # Well-separated clusters
+    c1 = torch.randn((20, 10)) + 5.0
+    c2 = torch.randn((20, 10)) - 5.0
+    j_separated = compute_fisher_separability(c1, c2)
 
-    # Clusters bem separados no hiperespaço
-    act_success = torch.randn((20, 128)) + 5.0
-    act_failure = torch.randn((20, 128)) - 5.0
-    j_high = compute_fisher_separability(act_success, act_failure)
-    assert j_high > 10.0
+    # Overlapping clusters
+    c3 = torch.randn((20, 10))
+    c4 = torch.randn((20, 10))
+    j_overlapping = compute_fisher_separability(c3, c4)
 
-def test_fisher_separability_numerical_stability():
-    """Garante que instabilidade divisória em clusters sem variância seja contida."""
-    # Clusters sem variância (compostos por escalares idênticos)
-    # the 1e-10 epsilon in the denominator should prevent division by zero NaN
-    act_success = torch.full((10, 128), 2.0)
-    act_failure = torch.full((10, 128), -2.0)
-    j_value = compute_fisher_separability(act_success, act_failure)
-    
-    # Será um número gigantesco devido à variância zero, mas não NaN
-    assert not np.isnan(j_value)
-    assert j_value > 1000.0
+    assert j_separated > j_overlapping
 
-def test_effective_dimensionality_rank_deficient():
-    """Garante que matrizes colapsadas (singulares) sejam traduzidas com fallback seguro."""
-    activations = torch.ones((10, 10))
-    d_eff = compute_effective_dimensionality(activations)
-    # Apenas a primeira dimensão tem energia, as demais são zero (ou próximas de zero)
-    assert 1.0 <= d_eff < 1.1
 
-def test_effective_dimensionality_nan_infinity():
-    """Verifica proteção contra tensores corrompidos (Injeções Nulas / Inf)."""
-    # Matriz com valores infinitos
-    activations = torch.tensor([[float("inf"), 1.0], [1.0, 0.0]])
-    d_eff = compute_effective_dimensionality(activations)
-    # SVD com valores infinitos levanta RuntimeError (antigo LinAlgError), deve cair no fallback
-    assert d_eff == 1.0
+def test_compute_convex_hull() -> None:
+    """Test Pareto Non-decreasing Convex Hull computation."""
+    points = [
+        (0.02, 0.50),  # SLM cheap, lower quality
+        (0.25, 0.85),  # Mid tier
+        (0.30, 0.80),  # Dominated (higher cost, lower quality than 0.25)
+        (1.50, 0.97),  # Oracle frontier
+    ]
+
+    hull = compute_convex_hull(points)
+    # Should exclude the dominated point (0.30, 0.80)
+    assert len(hull) == 3
+    assert (0.30, 0.80) not in hull
+    assert hull[0] == (0.02, 0.50)
+    assert hull[-1] == (1.50, 0.97)

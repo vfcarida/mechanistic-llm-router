@@ -1,70 +1,64 @@
+"""SharedTrunkEncoder Module for Prefill Hidden Activation Extraction."""
+
 import torch
 import torch.nn as nn
 from ..config import RouterConfig
 
+
 class SharedTrunkEncoder(nn.Module):
-    """Simulador de um Encoder Leve (SharedTrunk) no modelo de Desacoplamento.
+    """Simulator of a Lightweight Shared-Trunk Encoder under Encoder-Target Decoupling.
 
-    Na prática, este componente representa o 'prefill stage' de um modelo
-    de linguagem de pequeno porte (ex: BERT, DistilRoBERTa, ou as primeiras
-    N camadas do LLM de base). 
+    In production deployment, this component represents the prefill stage of a
+    lightweight language model (e.g., BERT, DistilRoBERTa, or the initial N layers
+    of the base LLM).
 
-    A abordagem mecanística requer extrair o tensor de ativações ocultas 
-    (hidden states) gerado enquanto o prompt original é processado, sem a
-    necessidade de rodar o loop autoregressivo completo.
-    
+    The mechanistic approach extracts the hidden states tensor generated while
+    processing the prompt sequence, bypassing the full autoregressive generation loop.
+
     Attributes:
-        config (RouterConfig): Instância contendo arquitetura de dimensionalidade.
-        vocab_size (int): Tamanho estático simulado de vocabulário.
-        embedding (nn.Embedding): Camada de mapeamento token -> tensor denso.
-        layers (nn.ModuleList): Pilha de redes Feed-Forward densas representando
-            as camadas de prefill.
+        config: Instance specifying dimensionality parameters.
+        vocab_size: Simulated static vocabulary size.
+        embedding: Token embedding layer.
+        layers: Stack of dense Feed-Forward layers simulating prefill.
     """
 
     def __init__(self, config: RouterConfig):
-        """Inicializa a arquitetura da rede simulada baseada nas dimensões da configuração."""
+        """Initializes simulated neural network architecture using configuration settings."""
         super().__init__()
         self.config = config
-        
-        # Simulação do vocabulário (hash-based embedding lock)
+
         self.vocab_size = 10000
         self.embedding = nn.Embedding(self.vocab_size, config.hidden_dim)
 
-        # Camadas do prefill (Simulando uma arquitetura Transformer FFN reduzida)
         self.layers = nn.ModuleList([
             nn.Sequential(
                 nn.Linear(config.hidden_dim, config.hidden_dim),
                 nn.LayerNorm(config.hidden_dim),
-                nn.ReLU()
+                nn.ReLU(),
             )
             for _ in range(config.num_prefill_layers)
         ])
 
     def forward(self, input_ids: torch.Tensor) -> tuple[torch.Tensor, list[torch.Tensor]]:
-        """Executa o forward pass do prefill e coleta ativações.
+        """Executes the prefill forward pass and collects activation tensors.
 
         Args:
-            input_ids (torch.Tensor): Tensor de identificadores de tokens 
-                [batch_size, seq_len] do prompt do usuário.
+            input_ids: Token identifier tensor [batch_size, seq_len].
 
         Returns:
-            tuple[torch.Tensor, list[torch.Tensor]]: 
-                - O tensor de saída final pós-prefill.
-                - Lista contendo a ativação bruta (unpooled) de *cada* 
-                  uma das camadas intermediárias, com formato [batch_size, seq_len, hidden_dim].
+            Tuple containing:
+                - Final output tensor after prefill layers.
+                - List containing raw unpooled activations of each intermediate layer,
+                  formatted as [batch_size, seq_len, hidden_dim].
         """
         if input_ids.numel() == 0:
-            raise ValueError("O tensor de entrada (input_ids) não pode estar vazio.")
+            raise ValueError("Input tensor (input_ids) cannot be empty.")
 
         x = self.embedding(input_ids)
 
         layer_activations = []
         for layer in self.layers:
             x = layer(x)
-            
-            # Store the raw unpooled hidden state activation of shape [batch_size, seq_len, hidden_dim].
-            # This preserves the full token trajectory so that downstream signals like
-            # Effective Dimensionality (d_eff) can compute rank/entropy correctly across tokens.
             layer_activations.append(x)
 
         return x, layer_activations

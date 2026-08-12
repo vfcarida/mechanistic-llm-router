@@ -40,11 +40,11 @@ class MechanisticRouter:
             config (RouterConfig): Objeto de injeção de parâmetros (limiares e orçamento).
         """
         if not isinstance(encoder, SharedTrunkEncoder):
-            raise TypeError("encoder deve ser uma instância de SharedTrunkEncoder.")
+            raise TypeError("encoder must be an instance of SharedTrunkEncoder.")
         if not isinstance(model_pool, dict) or not all(isinstance(k, str) and isinstance(v, TargetModel) for k, v in model_pool.items()):
-            raise TypeError("model_pool deve ser um dicionário mapeando string para TargetModel.")
+            raise TypeError("model_pool must be a dictionary mapping strings to TargetModel.")
         if not isinstance(config, RouterConfig):
-            raise TypeError("config deve ser uma instância de RouterConfig.")
+            raise TypeError("config must be an instance of RouterConfig.")
 
         self.encoder = encoder
         self.model_pool = model_pool
@@ -169,9 +169,9 @@ class MechanisticRouter:
                 sinais latentes de cada modelo da pool.
         """
         if not isinstance(prompt_text, str):
-            raise TypeError("prompt_text deve ser uma string.")
+            raise TypeError("prompt_text must be a string.")
         if not isinstance(complexity, TaskComplexity):
-            raise TypeError("complexity deve ser do tipo TaskComplexity.")
+            raise TypeError("complexity must be of type TaskComplexity.")
 
         input_tensor = self._prompt_to_tensor(prompt_text)
         _, layer_activations = self.encoder(input_tensor)

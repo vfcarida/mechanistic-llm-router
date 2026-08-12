@@ -1,11 +1,21 @@
-from .config import RouterConfig, DEFAULT_CONFIG
-from .core.encoder import SharedTrunkEncoder
-from .core.router import MechanisticRouter
+"""Mechanistic LLM Router Package."""
 
-__version__ = "0.1.0"
+from .config import RouterConfig
+from .core.encoder import SharedTrunkEncoder
+from .gateway.dispatcher import LiteLLMDispatcher
+from .observability.metrics import RouterMetrics
+from .probing.sae_engine import SAEEngine
+from .routers.cost_performance import CostPerformanceRouter
+from .routers.mechanistic import MechanisticRouter
+from .routers.semantic import SemanticRouter
+
 __all__ = [
     "RouterConfig",
-    "DEFAULT_CONFIG",
     "SharedTrunkEncoder",
     "MechanisticRouter",
+    "CostPerformanceRouter",
+    "SemanticRouter",
+    "LiteLLMDispatcher",
+    "RouterMetrics",
+    "SAEEngine",
 ]

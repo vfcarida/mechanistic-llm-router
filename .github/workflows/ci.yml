@@ -1,0 +1,54 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-and-lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install .[dev]
+
+      - name: Run Ruff Linter & Formatter Check
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: Run Mypy Static Type Analysis
+        run: |
+          mypy src/
+
+      - name: Run Pytest Suite with Coverage (>= 85%)
+        run: |
+          pytest -v --cov=src/mechanistic_router --cov-report=term-missing --cov-report=xml --cov-fail-under=85
+
+      - name: Build Wheel Package
+        run: |
+          python -m pip install build
+          python -m build
+
+  docker-build:
+    needs: test-and-lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build Docker Image
+        run: |
+          docker build -t mechanistic-llm-router-gateway:latest .

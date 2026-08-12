@@ -5,24 +5,40 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "mechanistic_router"
 version = "0.1.0"
-description = "Proof of Concept for a Mechanistic LLM Router based on Encoder-Target Decoupling"
+description = "Mechanistic LLM Router: High-Performance LLM Routing via Encoder-Target Decoupling, Prefill Probing, & SAE Circuit Analysis"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
-    {name = "Arquitetura de IA"}
+    {name = "Vinicius Carida", email = "vfcarida@gmail.com"}
 ]
 dependencies = [
     "numpy>=1.24.0",
     "pandas>=2.0.0",
-    "torch>=2.0.0"
+    "torch>=2.0.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "litellm>=1.0.0",
+    "fastapi>=0.100.0",
+    "uvicorn>=0.20.0",
+    "httpx>=0.24.0",
+    "opentelemetry-api>=1.20.0",
+    "opentelemetry-sdk>=1.20.0",
+    "opentelemetry-exporter-prometheus>=0.41b0",
+    "pyyaml>=6.0"
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.0.0",
-    "pytest-cov>=4.0.0",
-    "mypy>=1.0.0"
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-mock>=3.11.0",
+    "mypy>=1.5.0",
+    "ruff>=0.1.0",
+    "types-pyyaml>=6.0",
+    "mkdocs-material>=9.4.0",
+    "mkdocstrings[python]>=0.23.0"
 ]
 
 [tool.setuptools.packages.find]
@@ -30,4 +46,20 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
+asyncio_mode = "auto"
+testpaths = ["tests"]
 
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = []
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true

@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mechanistic-router-gateway
+    ports:
+      - "8000:8000"
+      - "9090:9090"
+    environment:
+      - ROUTER_SEED=42
+      - ROUTER_LAMBDA_BUDGET=0.68
+    restart: always
+
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    container_name: mechanistic-router-prometheus
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./grafana/provisioning/datasources/prometheus.yml:/etc/prometheus/prometheus.yml
+    restart: always
+
+  grafana:
+    image: grafana/grafana:10.1.5
+    container_name: mechanistic-router-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - prometheus
+    restart: always

@@ -1,0 +1,10 @@
+router:
+  seed: 42
+  hidden_dim: 128
+  num_prefill_layers: 6
+  lambda_budget: 0.68
+  deff_complexity_threshold: 3.5
+  fisher_alpha: 0.30
+  fisher_j_threshold: 0.30
+  embedding_dim: 384
+  similarity_threshold: 0.85
