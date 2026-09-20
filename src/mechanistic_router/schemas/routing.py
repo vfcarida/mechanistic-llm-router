@@ -31,9 +31,6 @@ class RoutingRequest(BaseModel):
     """Incoming prompt payload for router evaluation."""
 
     prompt: str = Field(..., min_length=1, description="Raw prompt query text.")
-    task_complexity: TaskComplexity = Field(
-        default=TaskComplexity.ROUTINE, description="Ground truth or inferred task complexity."
-    )
     user_id: str | None = Field(default=None, description="Optional caller user identifier.")
     max_budget_usd: float | None = Field(default=None, description="Optional hard constraint on cost.")
 

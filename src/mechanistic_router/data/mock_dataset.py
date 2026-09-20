@@ -1,9 +1,24 @@
 import numpy as np
-import pandas as pd
+from ..models.pool import MODEL_POOL, get_model_accuracy
 from ..models.types import TaskComplexity
+from ..schemas.eval import EvalCase
 
-def create_financial_dataset(n_samples: int = 200, seed: int = 42) -> pd.DataFrame:
-    """Gera um dataset mock de atendimento financeiro simulando o domínio BERTaú."""
+
+def create_financial_dataset(n_samples: int = 200, seed: int = 42) -> list[EvalCase]:
+    """Gera um dataset mock de avaliação financeira emitindo EvalCase instances.
+
+    Os prompts mantêm o domínio financeiro sintético (24 prompts em 6 categorias).
+    Os rótulos de complexidade são atribuídos exclusivamente como `reference_tier`
+    para avaliação posterior, nunca fornecidos aos modelos durante o roteamento.
+
+    Args:
+        n_samples: Quantidade de amostras a gerar.
+        seed: Semente aleatória para reprodutibilidade da distribuição.
+
+    Returns:
+        list[EvalCase]: Lista de instâncias de avaliação contendo prompt, desfechos
+            por modelo, tabela de preços e reference_tier de ground-truth.
+    """
     categories_and_prompts: dict[str, list[tuple[str, TaskComplexity]]] = {
         "consulta_fatura": [
             ("Qual o valor da minha fatura do cartão de crédito este mês?", TaskComplexity.ROUTINE),
@@ -39,9 +54,7 @@ def create_financial_dataset(n_samples: int = 200, seed: int = 42) -> pd.DataFra
         ],
     }
 
-    records: list[dict[str, str | TaskComplexity]] = []
     all_prompts: list[tuple[str, str, TaskComplexity]] = []
-
     for category, prompts in categories_and_prompts.items():
         for text, complexity in prompts:
             all_prompts.append((category, text, complexity))
@@ -53,33 +66,33 @@ def create_financial_dataset(n_samples: int = 200, seed: int = 42) -> pd.DataFra
         TaskComplexity.COMPLEX: [p for p in all_prompts if p[2] == TaskComplexity.COMPLEX],
     }
 
-    # Distribuição alvo na produção
     target_dist = {
         TaskComplexity.ROUTINE: 0.55,
         TaskComplexity.MODERATE: 0.30,
         TaskComplexity.COMPLEX: 0.15,
     }
 
+    price_table = {name: model.cost for name, model in MODEL_POOL.items()}
     rng = np.random.RandomState(seed)
-    
-    for i in range(n_samples):
-        # Selecionar complexidade baseada na distribuição alvo
-        cplx = rng.choice(
-            list(target_dist.keys()), 
-            p=list(target_dist.values())
-        )
-        
-        # Selecionar um prompt aleatório dessa complexidade
+    eval_cases: list[EvalCase] = []
+
+    for _ in range(n_samples):
+        cplx = rng.choice(list(target_dist.keys()), p=list(target_dist.values()))
         pool = prompts_by_complexity[cplx]
         idx = rng.randint(0, len(pool))
-        category, text, complexity = pool[idx]
-        
-        records.append({
-            "prompt_id": f"FIN-{i:04d}",
-            "prompt_text": text,
-            "category": category,
-            "complexity": complexity,
-        })
+        _, text, complexity = pool[idx]
 
-    df = pd.DataFrame(records)
-    return df
+        per_model_outcome = {
+            name: get_model_accuracy(model, complexity) for name, model in MODEL_POOL.items()
+        }
+
+        eval_cases.append(
+            EvalCase(
+                prompt=text,
+                per_model_outcome=per_model_outcome,
+                price_table=price_table,
+                reference_tier=complexity,
+            )
+        )
+
+    return eval_cases

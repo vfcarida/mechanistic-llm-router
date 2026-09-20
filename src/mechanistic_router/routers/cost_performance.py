@@ -6,6 +6,7 @@ from ..models.pool import get_model_accuracy
 from ..models.types import TargetModel, TaskComplexity
 from ..schemas.routing import ProbingSignals, RoutingDecision, RoutingRequest
 from .base import AbstractRouter
+from .heuristics import estimate_complexity
 
 
 class CostPerformanceRouter(AbstractRouter):
@@ -23,15 +24,16 @@ class CostPerformanceRouter(AbstractRouter):
         start_time = time.perf_counter()
         signals: dict[str, ProbingSignals] = {}
 
-        # Complexity order ranking
+        # Inferred complexity order ranking
+        estimated_complexity = estimate_complexity(request.prompt)
         complexity_order = [TaskComplexity.ROUTINE, TaskComplexity.MODERATE, TaskComplexity.COMPLEX]
-        req_idx = complexity_order.index(request.task_complexity)
+        req_idx = complexity_order.index(estimated_complexity)
 
         candidate_scores: dict[str, float] = {}
 
         for name, model in self.model_pool.items():
             ceiling_idx = complexity_order.index(model.complexity_ceiling)
-            accuracy = get_model_accuracy(model, request.task_complexity)
+            accuracy = get_model_accuracy(model, estimated_complexity)
             
             # Competent if request complexity is below or equal to ceiling
             is_competent = req_idx <= ceiling_idx

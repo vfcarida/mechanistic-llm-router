@@ -47,7 +47,7 @@ where = ["src"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 asyncio_mode = "auto"
-testpaths = ["tests"]
+testpaths = ["tests", "experiments/mechanistic_probe/tests"]
 
 [tool.ruff]
 line-length = 100

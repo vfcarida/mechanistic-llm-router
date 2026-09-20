@@ -2,8 +2,10 @@
 
 import math
 import time
+
 import numpy as np
 import torch
+
 from ..config import RouterConfig
 from ..core.encoder import SharedTrunkEncoder
 from ..models.pool import get_model_accuracy
@@ -12,6 +14,7 @@ from ..schemas.routing import ProbingSignals, RoutingDecision, RoutingRequest
 from ..signals.math_utils import compute_effective_dimensionality, compute_fisher_separability
 from ..utils.metrics import normalized_accuracy, normalized_inverse_cost
 from .base import AbstractRouter
+from .heuristics import estimate_complexity
 
 
 class MechanisticRouter(AbstractRouter):
@@ -30,6 +33,8 @@ class MechanisticRouter(AbstractRouter):
         config: RouterConfig,
     ):
         super().__init__(model_pool, config)
+        if not isinstance(encoder, SharedTrunkEncoder):
+            raise TypeError("encoder must be an instance of SharedTrunkEncoder")
         self.encoder = encoder
         self.encoder.eval()
 
@@ -94,8 +99,13 @@ class MechanisticRouter(AbstractRouter):
 
         return success_activations, failure_activations
 
-    async def route(self, request: RoutingRequest) -> RoutingDecision:
+    async def route(self, request: RoutingRequest | str) -> RoutingDecision:
         """Executes two-phase mechanistic probing and returns optimal LLM route decision."""
+        if isinstance(request, str):
+            request = RoutingRequest(prompt=request)
+        elif not isinstance(request, RoutingRequest):
+            raise TypeError("request must be an instance of RoutingRequest or str.")
+
         start_time = time.perf_counter()
         input_tensor = self._prompt_to_tensor(request.prompt)
 
@@ -112,13 +122,15 @@ class MechanisticRouter(AbstractRouter):
         signals: dict[str, ProbingSignals] = {}
         model_scores: dict[str, float] = {}
 
+        estimated_complexity = estimate_complexity(request.prompt)
+
         for name, model in self.model_pool.items():
-            acc = get_model_accuracy(model, request.task_complexity)
+            acc = get_model_accuracy(model, estimated_complexity)
             inv_cost_score = normalized_inverse_cost(model.cost, self.cost_min, self.cost_max)
             acc_score = normalized_accuracy(acc, self.acc_floor, self.acc_ceil)
 
             success_act, failure_act = self._simulate_fisher_activations(
-                layer_activations, model, request.task_complexity
+                layer_activations, model, estimated_complexity
             )
             fisher_j = compute_fisher_separability(success_act, failure_act)
             fisher_j_norm = min(fisher_j / (fisher_j + 1.0), 1.0)
@@ -130,7 +142,7 @@ class MechanisticRouter(AbstractRouter):
                 fisher_j=fisher_j,
                 fisher_j_norm=fisher_j_norm,
                 is_competent=is_competent,
-                sae_features=[42, 108] if request.task_complexity == TaskComplexity.COMPLEX else [7],
+                sae_features=[42, 108] if estimated_complexity == TaskComplexity.COMPLEX else [7],
                 extra_metadata={
                     "inv_cost_norm": inv_cost_score,
                     "acc_norm": acc_score,

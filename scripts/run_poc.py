@@ -1,30 +1,33 @@
 #!/usr/bin/env python3
-import sys
 import pathlib
+import sys
 
 # Garantir que src/ está no path
 src_dir = pathlib.Path(__file__).parent.parent / "src"
 sys.path.insert(0, str(src_dir.resolve()))
 
+import asyncio
 import logging
 import textwrap
 from collections import Counter
+
 from mechanistic_router.config import DEFAULT_CONFIG
+from mechanistic_router.core.encoder import SharedTrunkEncoder
 from mechanistic_router.data.mock_dataset import create_financial_dataset
 from mechanistic_router.models.pool import MODEL_POOL
-from mechanistic_router.core.encoder import SharedTrunkEncoder
-from mechanistic_router.core.router import MechanisticRouter
+from mechanistic_router.routers.mechanistic import MechanisticRouter
+from mechanistic_router.schemas.routing import RoutingRequest
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
 def generate_report(
-    eval_records: list[dict], 
-    cost_frontier: float, 
+    eval_records: list[dict],
+    cost_frontier: float,
     acc_frontier: float,
-    cost_oracle: float, 
+    cost_oracle: float,
     acc_oracle: float,
-    cost_router: float, 
+    cost_router: float,
     acc_router: float,
     n_samples: int
 ):
@@ -34,7 +37,7 @@ def generate_report(
     oracle_proximity = (oracle_savings / savings_vs_frontier * 100) if savings_vs_frontier > 0 else 100.0
 
     slm_complex_fails = sum(
-        1 for r in eval_records 
+        1 for r in eval_records
         if r["complexity"].value == "complex" and r["selected_model"] == "SLM-BERTau-Local"
     )
     slm_complex_acc = 0.40 # Piso
@@ -55,7 +58,7 @@ def generate_report(
     logger.info("  Cost-Optimal-Mechanistic-Router – Relatório Executivo da PoC")
     logger.info("  Roteamento Mecanístico via Prefill · Desacoplamento Encoder-Target")
     logger.info("═" * 78)
-    
+
     logger.info("\n  Cenário                              Custo Total    $/Query   Acurácia")
     logger.info("  " + "─" * 76)
     logger.info(f"  Frontier Only (Baseline)            $ {cost_frontier:8.2f} $ {cost_frontier/n_samples:7.4f}    {acc_frontier*100:5.2f}%")
@@ -74,7 +77,7 @@ def generate_report(
     logger.info("\n  " + "─" * 76)
     logger.info("  DISTRIBUIÇÃO DE ROTEAMENTO (Cost-Optimal-Mechanistic-Router)")
     logger.info("  " + "─" * 76)
-    
+
     for name in MODEL_POOL.keys():
         count = router_counts[name]
         pct = (count / n_samples) * 100
@@ -97,17 +100,17 @@ def generate_report(
 def main():
     logger.info("\n⚡ Cost-Optimal-Mechanistic-Router – Mechanistic LLM Router PoC")
     logger.info("  Inicializando componentes...\n")
-    
+
     # 1. Dataset
     logger.info("  [1/5] Gerando dataset financeiro mock (domínio BERTaú)...")
-    df_dataset = create_financial_dataset(n_samples=200, seed=DEFAULT_CONFIG.seed)
-    n_samples = len(df_dataset)
-    counts = df_dataset["complexity"].value_counts()
+    dataset = create_financial_dataset(n_samples=200, seed=DEFAULT_CONFIG.seed)
+    n_samples = len(dataset)
+    counts = Counter(c.reference_tier for c in dataset if c.reference_tier is not None)
     logger.info(f"        → {n_samples} amostras geradas")
     logger.info("        → Distribuição de complexidade:")
     for cplx, count in counts.items():
         logger.info(f"           {cplx.value:<12}: {count:4d} amostras ({(count/n_samples)*100:.1f}%)")
-        
+
     # 2. Encoder
     logger.info("\n  [2/5] Inicializando SharedTrunkEncoder...")
     encoder = SharedTrunkEncoder(DEFAULT_CONFIG)
@@ -119,10 +122,10 @@ def main():
     router = MechanisticRouter(encoder, MODEL_POOL, DEFAULT_CONFIG)
     logger.info(f"        → λ (orçamento dinâmico): {DEFAULT_CONFIG.lambda_budget}")
     logger.info(f"        → Pool de modelos: {list(MODEL_POOL.keys())}")
-    
+
     # 4. Avaliação
     logger.info("\n  [4/5] Executando cenários de avaliação...")
-    
+
     eval_records = []
     cost_frontier = 0.0
     acc_frontier = 0.0
@@ -130,76 +133,80 @@ def main():
     acc_oracle = 0.0
     cost_router = 0.0
     acc_router = 0.0
-    
+
     demos = []
-    
-    for i, row in df_dataset.iterrows():
-        prompt_text = row["prompt_text"]
-        complexity = row["complexity"]
-        
+
+    for i, case in enumerate(dataset):
+        prompt_text = case.prompt
+        complexity = case.reference_tier
+
         # Baseline Frontier
         frontier_model = MODEL_POOL["LLM-Frontier-Oracle"]
         cost_frontier += frontier_model.cost
-        acc_frontier += frontier_model.base_accuracy
-        
+        acc_frontier += case.per_model_outcome.get("LLM-Frontier-Oracle", frontier_model.base_accuracy)
+
         # Oracle
-        if complexity.value == "routine":
+        if complexity and complexity.value == "routine":
             best_model = MODEL_POOL["SLM-BERTau-Local"]
-        elif complexity.value == "moderate":
+        elif complexity and complexity.value == "moderate":
             best_model = MODEL_POOL["LLM-Mid-Tier"]
         else:
             best_model = MODEL_POOL["LLM-Frontier-Oracle"]
-            
+
         cost_oracle += best_model.cost
-        acc_oracle += best_model.base_accuracy
-        
-        # Router
-        selected_name, details = router.route(prompt_text, complexity)
+        acc_oracle += case.per_model_outcome.get(best_model.name, best_model.base_accuracy)
+
+        # Router (Strategy API)
+        decision = asyncio.run(router.route(RoutingRequest(prompt=prompt_text)))
+        selected_name = decision.selected_model
         selected_model = MODEL_POOL[selected_name]
-        
+
         cost_router += selected_model.cost
-        acc_router += details[selected_name]["accuracy"]
-        
+        acc_router += case.per_model_outcome.get(selected_name, 0.0)
+
+        details = {k: v.model_dump() for k, v in decision.signals.items()}
+
         eval_records.append({
             "prompt_text": prompt_text,
             "complexity": complexity,
             "selected_model": selected_name,
             "details": details
         })
-        
+
         # Salvar alguns exemplos para demo
-        if len(demos) < 3 and complexity.value == "routine":
+        if len(demos) < 3 and complexity and complexity.value == "routine":
             demos.append(eval_records[-1])
-            
+
     acc_frontier /= n_samples
     acc_oracle /= n_samples
     acc_router /= n_samples
-    
+
     logger.info(f"        → Frontier Only:    custo=${cost_frontier:.2f}, acc={acc_frontier*100:.2f}%")
     logger.info(f"        → Oráculo:          custo=${cost_oracle:.2f}, acc={acc_oracle*100:.2f}%")
     logger.info(f"        → Cost-Optimal-Mechanistic-Router: custo=${cost_router:.2f}, acc={acc_router*100:.2f}%")
-    
+
     logger.info("\n  [5/5] Gerando relatório executivo...\n")
-    
+
     generate_report(eval_records, cost_frontier, acc_frontier, cost_oracle, acc_oracle, cost_router, acc_router, n_samples)
-    
+
     # Demos
     logger.info("\n──────────────────────────────────────────────────────────────────────────────")
     logger.info("  DEMONSTRAÇÃO DE SINAIS MECANÍSTICOS (3 amostras)")
     logger.info("──────────────────────────────────────────────────────────────────────────────\n")
-    
+
     for demo in demos:
         prompt_preview = textwrap.shorten(demo["prompt_text"], width=60, placeholder="...")
         logger.info(f"  Prompt: \"{prompt_preview}\"")
         logger.info(f"  Complexidade: {demo['complexity'].value}")
         logger.info(f"  Modelo Selecionado: {demo['selected_model']}")
         logger.info("  Sinais:")
-        
+
         for name, sig in demo["details"].items():
             sel_mark = "← SELECIONADO" if name == demo["selected_model"] else ""
-            logger.info(f"    {name:<25} d_eff={sig['d_eff_mean']:.2f}  J={sig['fisher_j']:.3f}  score={sig['final_score']:.3f} {sel_mark}")
+            score = sig.get("final_score", sig.get("fisher_j_norm", 0.0))
+            logger.info(f"    {name:<25} d_eff={sig['d_eff_mean']:.2f}  J={sig['fisher_j']:.3f}  score={score:.3f} {sel_mark}")
         logger.info("")
-        
+
     logger.info("══════════════════════════════════════════════════════════════════════════════")
     logger.info("  PoC finalizada. Cost-Optimal-Mechanistic-Router v0.1.0 (Modular)")
     logger.info("══════════════════════════════════════════════════════════════════════════════\n")

@@ -54,3 +54,4 @@ class ChatCompletionResponse(BaseModel):
     choices: list[ChatCompletionChoice] = Field(...)
     usage: UsageInfo = Field(default_factory=UsageInfo)
     router_strategy: str | None = Field(default=None, description="Router strategy applied.")
+    cost_saved_usd: float | None = Field(default=None, description="Dynamic cost savings USD vs strongest model.")

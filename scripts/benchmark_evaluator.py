@@ -7,7 +7,6 @@ from mechanistic_router.config import DEFAULT_CONFIG
 from mechanistic_router.core.encoder import SharedTrunkEncoder
 from mechanistic_router.data.mock_dataset import create_financial_dataset
 from mechanistic_router.models.pool import MODEL_POOL
-from mechanistic_router.models.types import TaskComplexity
 from mechanistic_router.routers.cost_performance import CostPerformanceRouter
 from mechanistic_router.routers.mechanistic import MechanisticRouter
 from mechanistic_router.routers.semantic import SemanticRouter
@@ -28,32 +27,23 @@ async def evaluate_benchmark(n_samples: int = 150) -> None:
 
     results: list[dict[str, Any]] = []
 
-    # Evaluate routers
+    # Evaluate routers without label leakage
     for router_name, router_inst in routers.items():
         total_cost = 0.0
-        correct_count = 0
+        total_score = 0.0
 
-        for _, row in dataset.iterrows():
-            req = RoutingRequest(prompt=row["prompt_text"], task_complexity=row["complexity"])
+        for case in dataset:
+            req = RoutingRequest(prompt=case.prompt)
             decision = await router_inst.route(req)
 
-            cost = decision.estimated_cost_usd
+            cost = case.price_table.get(decision.selected_model, decision.estimated_cost_usd)
             total_cost += cost
 
-            # Determine accuracy success
-            selected_model = MODEL_POOL[decision.selected_model]
-            complexity_order = [
-                TaskComplexity.ROUTINE,
-                TaskComplexity.MODERATE,
-                TaskComplexity.COMPLEX,
-            ]
-            if complexity_order.index(row["complexity"]) <= complexity_order.index(
-                selected_model.complexity_ceiling
-            ):
-                correct_count += 1
+            # Grade using eval-only ground-truth outcomes, not router-internal tiers
+            total_score += case.per_model_outcome.get(decision.selected_model, 0.0)
 
         avg_cost = total_cost / n_samples
-        accuracy = correct_count / n_samples
+        accuracy = total_score / n_samples
         results.append(
             {
                 "Strategy": router_name,
@@ -64,11 +54,25 @@ async def evaluate_benchmark(n_samples: int = 150) -> None:
 
     # Add Oracle Baseline (always routes to frontier model)
     oracle = MODEL_POOL["LLM-Frontier-Oracle"]
-    results.append({"Strategy": "Oracle (Frontier Only)", "Avg Cost ($)": oracle.cost, "Accuracy": oracle.base_accuracy})
+    oracle_score = sum(case.per_model_outcome["LLM-Frontier-Oracle"] for case in dataset) / n_samples
+    results.append(
+        {
+            "Strategy": "Oracle (Frontier Only)",
+            "Avg Cost ($)": oracle.cost,
+            "Accuracy": round(oracle_score, 4),
+        }
+    )
 
     # Add Zero-Router Baseline (always routes to local SLM)
     slm = MODEL_POOL["SLM-BERTau-Local"]
-    results.append({"Strategy": "Zero-Router (SLM Only)", "Avg Cost ($)": slm.cost, "Accuracy": 0.52})
+    slm_score = sum(case.per_model_outcome["SLM-BERTau-Local"] for case in dataset) / n_samples
+    results.append(
+        {
+            "Strategy": "Zero-Router (SLM Only)",
+            "Avg Cost ($)": slm.cost,
+            "Accuracy": round(slm_score, 4),
+        }
+    )
 
     df = pd.DataFrame(results)
     print("\n=== Benchmark Evaluation Results ===")

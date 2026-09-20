@@ -27,12 +27,12 @@ async def main() -> None:
     ]
 
     print("\n--- Routing Decision Evaluation ---")
-    for prompt, complexity in sample_queries:
-        req = RoutingRequest(prompt=prompt, task_complexity=complexity)
+    for prompt, expected_tier in sample_queries:
+        req = RoutingRequest(prompt=prompt)
         decision = await router.route(req)
 
         print(f"\nPrompt: '{prompt}'")
-        print(f"Task Complexity: {complexity.value}")
+        print(f"Reference Benchmark Tier: {expected_tier.value}")
         print(f"Selected Route: {decision.selected_model}")
         print(f"Estimated Cost: ${decision.estimated_cost_usd:.4f}")
         print(f"Decision Latency: {decision.latency_ms:.2f} ms")

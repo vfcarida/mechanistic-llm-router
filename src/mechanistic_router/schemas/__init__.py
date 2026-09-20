@@ -1,5 +1,6 @@
 """Pydantic v2 Schemas Package."""
 
+from .eval import ComplexityTier, EvalCase
 from .openai import (
     ChatCompletionChoice,
     ChatCompletionMessage,
@@ -24,4 +25,6 @@ __all__ = [
     "RoutingDecision",
     "ModelCandidate",
     "ProbingSignals",
+    "EvalCase",
+    "ComplexityTier",
 ]

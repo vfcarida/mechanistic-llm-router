@@ -40,3 +40,7 @@ ENV/
 .vscode/
 *.swp
 *.swo
+
+# Local cache
+.cache/
+
