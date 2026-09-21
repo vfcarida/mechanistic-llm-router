@@ -1,8 +1,12 @@
 """Unit Tests for Financial Dataset Generator emitting EvalCases."""
 
-from mechanistic_router.data.mock_dataset import create_financial_dataset
+import importlib
+
+import pytest
+
 from mechanistic_router.models.types import TaskComplexity
 from mechanistic_router.schemas.eval import EvalCase
+from tests.fixtures.mock_dataset import create_financial_dataset
 
 
 def test_create_financial_dataset_structure() -> None:
@@ -32,3 +36,11 @@ def test_create_financial_dataset_distribution() -> None:
     assert TaskComplexity.ROUTINE in tiers
     assert TaskComplexity.MODERATE in tiers
     assert TaskComplexity.COMPLEX in tiers
+
+
+def test_mock_dataset_deprecation_warning() -> None:
+    """Test that importing mechanistic_router.data.mock_dataset emits DeprecationWarning."""
+    import mechanistic_router.data.mock_dataset as deprecated_mock_dataset
+
+    with pytest.deprecated_call():
+        importlib.reload(deprecated_mock_dataset)

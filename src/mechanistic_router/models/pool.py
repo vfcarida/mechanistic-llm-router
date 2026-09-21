@@ -1,42 +1,44 @@
 from typing import Final
+
 from .types import TargetModel, TaskComplexity
 
-# Pool de modelos fictícios inspirados no domínio BERTaú (financeiro).
+# Mock target model pool inspired by benchmark domains.
 MODEL_POOL: Final[dict[str, TargetModel]] = {
     "SLM-BERTau-Local": TargetModel(
         name="SLM-BERTau-Local",
-        cost=0.02,            # US$ 0.02 por chamada
-        base_accuracy=0.91,   # Excelente em tarefas rotineiras
+        cost=0.02,  # USD 0.02 per query
+        base_accuracy=0.91,  # Strong on routine retrieval and memorization
         complexity_ceiling=TaskComplexity.ROUTINE,
     ),
     "LLM-Mid-Tier": TargetModel(
         name="LLM-Mid-Tier",
-        cost=0.25,            # US$ 0.25 por chamada
-        base_accuracy=0.88,   # Boa generalização
+        cost=0.25,  # USD 0.25 per query
+        base_accuracy=0.88,  # Balanced reasoning and generalization
         complexity_ceiling=TaskComplexity.MODERATE,
     ),
     "LLM-Frontier-Oracle": TargetModel(
         name="LLM-Frontier-Oracle",
-        cost=1.50,            # US$ 1.50 por chamada – custo altíssimo
-        base_accuracy=0.97,   # Precisão quase perfeita
+        cost=1.50,  # USD 1.50 per query - high-capacity frontier tier
+        base_accuracy=0.97,  # Near-perfect reasoning accuracy
         complexity_ceiling=TaskComplexity.COMPLEX,
     ),
 }
 
-def get_model_accuracy(model: TargetModel, complexity: TaskComplexity) -> float:
-    """Calcula a acurácia efetiva de um modelo dado a complexidade do prompt.
 
-    Se a complexidade excede o ceiling do modelo, a acurácia sofre degradação
-    proporcional à distância entre a complexidade exigida e o ceiling.
+def get_model_accuracy(model: TargetModel, complexity: TaskComplexity) -> float:
+    """Calculate the effective accuracy of a model given the prompt complexity.
+
+    If task complexity exceeds the model ceiling, accuracy suffers degradation
+    proportional to the distance between the required complexity and the ceiling.
     """
     complexity_order = [TaskComplexity.ROUTINE, TaskComplexity.MODERATE, TaskComplexity.COMPLEX]
     task_idx = complexity_order.index(complexity)
     ceiling_idx = complexity_order.index(model.complexity_ceiling)
 
     if task_idx <= ceiling_idx:
-        # Modelo está dentro de sua zona de competência
+        # Model is within its competence ceiling
         return model.base_accuracy
     else:
-        # Degradação: cada nível acima do ceiling reduz ~15% de acurácia
+        # Degradation: each tier above ceiling reduces accuracy by ~15%
         degradation = (task_idx - ceiling_idx) * 0.15
         return max(model.base_accuracy - degradation, 0.40)

@@ -155,7 +155,6 @@ import asyncio
 from mechanistic_router.config import DEFAULT_CONFIG
 from mechanistic_router.core.encoder import SharedTrunkEncoder
 from mechanistic_router.models.pool import MODEL_POOL
-from mechanistic_router.models.types import TaskComplexity
 from mechanistic_router.routers.mechanistic import MechanisticRouter
 from mechanistic_router.schemas.routing import RoutingRequest
 
@@ -164,11 +163,11 @@ async def run_routing_example():
     encoder = SharedTrunkEncoder(DEFAULT_CONFIG)
     router = MechanisticRouter(encoder, MODEL_POOL, DEFAULT_CONFIG)
 
-    # Note: task_complexity is currently passed as an illustrative ground-truth tag
+    # Prompt-only routing request (strictly zero label leakage)
     request = RoutingRequest(
-        prompt="Analyze my debt-to-income ratio and project credit score impact.",
-        task_complexity=TaskComplexity.COMPLEX
+        prompt="Analyze my debt-to-income ratio and project credit score impact."
     )
+
 
     decision = await router.route(request)
     print(f"Selected Target Route: {decision.selected_model}")
