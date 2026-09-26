@@ -121,6 +121,34 @@ def test_gateway_x_router_strategy_header(mock_acompletion: AsyncMock) -> None:
 
 
 @patch("litellm.acompletion", new_callable=AsyncMock)
+def test_gateway_causal_probe_strategy(mock_acompletion: AsyncMock) -> None:
+    """Ensure X-Router-Strategy: causal-probe or model: causal-probe-auto routes correctly."""
+    mock_response = MagicMock()
+    mock_response.id = "chatcmpl-test-causal"
+    mock_choice = MagicMock()
+    mock_choice.message.content = "Causal probe response"
+    mock_response.choices = [mock_choice]
+    mock_response.usage = MagicMock(prompt_tokens=5, completion_tokens=5, total_tokens=10)
+    mock_acompletion.return_value = mock_response
+
+    payload = {
+        "model": "causal-probe-auto",
+        "messages": [{"role": "user", "content": "Proof that primes are infinite"}],
+    }
+    response = client.post(
+        "/v1/chat/completions",
+        json=payload,
+        headers={
+            "Authorization": "Bearer test-router-key",
+            "X-Router-Strategy": "causal-probe",
+        },
+    )
+    assert response.status_code == 200
+    res_data = response.json()
+    assert "choices" in res_data
+
+
+@patch("litellm.acompletion", new_callable=AsyncMock)
 def test_gateway_dependency_override(mock_acompletion: AsyncMock) -> None:
     """Ensure FastAPI dependency injection allows overriding router
     with app.dependency_overrides.

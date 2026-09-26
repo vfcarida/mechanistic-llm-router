@@ -3,10 +3,13 @@
 from mechanistic_router.evaluation.baselines import (
     AlwaysCheapPolicy,
     AlwaysStrongPolicy,
+    CausalProbePolicy,
+    CostPerformancePolicy,
     LearnedLogisticPolicy,
     LengthThresholdPolicy,
     MechanisticPolicy,
     RandomPolicy,
+    SemanticPolicy,
 )
 from mechanistic_router.evaluation.dataset import (
     load_synthetic_eval_dataset,
@@ -85,6 +88,9 @@ def test_leakage_guard_policy_signatures() -> None:
         LengthThresholdPolicy(),
         LearnedLogisticPolicy(seed=42),
         MechanisticPolicy(),
+        CostPerformancePolicy(),
+        SemanticPolicy(),
+        CausalProbePolicy(),
     ]
 
     toy_prompt = "Qual meu saldo em conta corrente?"

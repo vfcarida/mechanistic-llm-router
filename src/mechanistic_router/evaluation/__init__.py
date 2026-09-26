@@ -4,10 +4,13 @@ from .baselines import (
     AlwaysCheapPolicy,
     AlwaysStrongPolicy,
     BasePolicy,
+    CausalProbePolicy,
+    CostPerformancePolicy,
     LearnedLogisticPolicy,
     LengthThresholdPolicy,
     MechanisticPolicy,
     RandomPolicy,
+    SemanticPolicy,
 )
 from .dataset import (
     load_routerbench_eval_dataset,
@@ -35,6 +38,9 @@ __all__ = [
     "LengthThresholdPolicy",
     "LearnedLogisticPolicy",
     "MechanisticPolicy",
+    "CostPerformancePolicy",
+    "SemanticPolicy",
+    "CausalProbePolicy",
     "split_dataset_prompt_disjoint",
     "load_synthetic_eval_dataset",
     "load_routerbench_eval_dataset",

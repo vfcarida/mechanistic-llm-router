@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `CODE_OF_CONDUCT.md` adhering to the Contributor Covenant v2.1 standard.
 - GitHub issue templates (`bug_report.md`, `feature_request.md`) and pull request template (`PULL_REQUEST_TEMPLATE.md`).
 - `CHANGELOG.md` for tracking project evolution and release notes.
+- Added `CostPerformancePolicy`, `SemanticPolicy`, and `CausalProbePolicy` to `evaluation.baselines` for evaluating all router strategies on Pareto benchmarks.
+- Supported `causal-probe` strategy and `causal-probe-auto` model in FastAPI gateway `/v1/chat/completions` and `/v1/models`.
+- Upgraded GitHub Actions CI workflow to test matrix (`["3.11", "3.12"]`) using `actions/checkout@v4` and `actions/setup-python@v5`.
+- Added `scikit-learn>=1.3.0` to dev dependencies in `pyproject.toml`.
 - Concrete `TransformerActivationEncoder` implementing `AbstractEncoder` over real HuggingFace transformer models (`AutoModel`, `AutoTokenizer`) for layer-wise prefill activation extraction.
 - Enhanced `SAEEngine` with Top-K activation sparsity (Gao et al. 2024), standard MSE reconstruction + L1 sparsity loss (`compute_loss`), and custom semantic `circuit_feature_map` matching.
 - OpenTelemetry GenAI semantic convention alignment (`P2-C`) in `RouterMetrics` with dual recording of `gen_ai.routing.duration`, `gen_ai.client.operation.duration`, `gen_ai.cost.saved`, and `gen_ai.routing.requests`.

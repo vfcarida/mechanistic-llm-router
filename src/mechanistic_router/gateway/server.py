@@ -185,6 +185,8 @@ def get_router(
         return getattr(request.app.state, "semantic_router", semantic_router)
     if strategy in ("cost-performance", "cost-performance-auto"):
         return getattr(request.app.state, "cost_performance_router", cost_performance_router)
+    if strategy in ("causal-probe", "causal-probe-auto", "causal"):
+        return getattr(request.app.state, "causal_probe_router", router)
     return getattr(request.app.state, "router", router)
 
 
@@ -309,6 +311,7 @@ async def list_models() -> dict[str, Any]:
     """OpenAI-compatible models list endpoint."""
     model_list = [
         {"id": "mechanistic-auto", "object": "model", "owned_by": "mechanistic-router"},
+        {"id": "causal-probe-auto", "object": "model", "owned_by": "mechanistic-router"},
         {"id": "cost-performance-auto", "object": "model", "owned_by": "mechanistic-router"},
         {"id": "semantic-auto", "object": "model", "owned_by": "mechanistic-router"},
     ]
@@ -368,6 +371,8 @@ async def chat_completions(
         active_router = getattr(
             request_http.app.state, "cost_performance_router", cost_performance_router
         )
+    elif req_model in ("causal-probe-auto", "causal-probe", "causal"):
+        active_router = getattr(request_http.app.state, "causal_probe_router", router)
 
     # Extract user prompt from conversation history (multi-turn context aware)
     prompt_text = extract_routing_prompt(request.messages)

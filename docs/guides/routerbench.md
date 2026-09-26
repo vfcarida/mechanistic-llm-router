@@ -41,13 +41,16 @@ python scripts/run_benchmark.py --dataset routerbench --format markdown --output
 
 ### Evaluated Policies
 
-The benchmark harness tests 6 distinct routing policies:
+The benchmark harness supports 9 distinct routing policies:
 1. **AlwaysCheapPolicy**: Routes every query to the lowest-cost model.
 2. **AlwaysStrongPolicy**: Routes every query to the most capable/expensive frontier model.
 3. **RandomPolicy**: Randomly selects a model from the pool.
 4. **LengthThresholdPolicy**: Routes based on input token length.
 5. **LearnedLogisticPolicy**: Supervised logistic regression on TF-IDF representation.
 6. **MechanisticPolicy**: Mechanistic router incorporating prefill dimensionality and separability.
+7. **CostPerformancePolicy**: Heuristic router optimizing cost-performance tradeoffs and budget caps.
+8. **SemanticPolicy**: Embedding centroid-based domain classifier and router.
+9. **CausalProbePolicy**: Prefill activation linear probing router using mechanistic representation.
 
 ---
 

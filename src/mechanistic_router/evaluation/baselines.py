@@ -13,8 +13,12 @@ from ..config import DEFAULT_CONFIG, RouterConfig
 from ..core.encoder import SharedTrunkEncoder
 from ..models.pool import MODEL_POOL
 from ..models.types import TargetModel
+from ..routers.causal_probe import CausalProbeRouter
+from ..routers.cost_performance import CostPerformanceRouter
 from ..routers.mechanistic import MechanisticRouter
+from ..routers.semantic import SemanticRouter
 from ..schemas.eval import EvalCase
+from ..schemas.routing import RoutingRequest
 
 
 class BasePolicy(ABC):
@@ -230,6 +234,121 @@ class MechanisticPolicy(BasePolicy):
         return decision.selected_model
 
 
+class CostPerformancePolicy(BasePolicy):
+    """Adapter wrapping CostPerformanceRouter."""
+
+    name: str = "CostPerformanceRouter"
+
+    def __init__(
+        self,
+        model_pool: dict[str, TargetModel] = MODEL_POOL,
+        config: RouterConfig = DEFAULT_CONFIG,
+    ):
+        self.model_pool = model_pool
+        self.config = config
+        self.router = CostPerformanceRouter(model_pool, config)
+        self._executor: concurrent.futures.ThreadPoolExecutor | None = None
+
+    def select_model(self, prompt: str) -> str:
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        req = RoutingRequest(prompt=prompt)
+        if loop and loop.is_running():
+            if self._executor is None:
+                self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+            decision = self._executor.submit(asyncio.run, self.router.route(req)).result()
+        else:
+            decision = asyncio.run(self.router.route(req))
+
+        return decision.selected_model
+
+    async def route(self, prompt: str) -> str:
+        req = RoutingRequest(prompt=prompt)
+        decision = await self.router.route(req)
+        return decision.selected_model
+
+
+class SemanticPolicy(BasePolicy):
+    """Adapter wrapping SemanticRouter."""
+
+    name: str = "SemanticRouter"
+
+    def __init__(
+        self,
+        model_pool: dict[str, TargetModel] = MODEL_POOL,
+        config: RouterConfig = DEFAULT_CONFIG,
+    ):
+        self.model_pool = model_pool
+        self.config = config
+        self.router = SemanticRouter(model_pool, config)
+        self._executor: concurrent.futures.ThreadPoolExecutor | None = None
+
+    def select_model(self, prompt: str) -> str:
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        req = RoutingRequest(prompt=prompt)
+        if loop and loop.is_running():
+            if self._executor is None:
+                self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+            decision = self._executor.submit(asyncio.run, self.router.route(req)).result()
+        else:
+            decision = asyncio.run(self.router.route(req))
+
+        return decision.selected_model
+
+    async def route(self, prompt: str) -> str:
+        req = RoutingRequest(prompt=prompt)
+        decision = await self.router.route(req)
+        return decision.selected_model
+
+
+class CausalProbePolicy(BasePolicy):
+    """Adapter wrapping CausalProbeRouter."""
+
+    name: str = "CausalProbeRouter"
+
+    def __init__(
+        self,
+        router: CausalProbeRouter | None = None,
+        model_pool: dict[str, TargetModel] = MODEL_POOL,
+    ):
+        self.model_pool = model_pool
+        self.router = router
+        self._executor: concurrent.futures.ThreadPoolExecutor | None = None
+
+    def select_model(self, prompt: str) -> str:
+        if self.router is None:
+            return min(self.model_pool.values(), key=lambda m: m.cost).name
+
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        req = RoutingRequest(prompt=prompt)
+        if loop and loop.is_running():
+            if self._executor is None:
+                self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+            decision = self._executor.submit(asyncio.run, self.router.route(req)).result()
+        else:
+            decision = asyncio.run(self.router.route(req))
+
+        return decision.selected_model
+
+    async def route(self, prompt: str) -> str:
+        if self.router is None:
+            return min(self.model_pool.values(), key=lambda m: m.cost).name
+        req = RoutingRequest(prompt=prompt)
+        decision = await self.router.route(req)
+        return decision.selected_model
+
+
 __all__ = [
     "BasePolicy",
     "AlwaysCheapPolicy",
@@ -238,4 +357,7 @@ __all__ = [
     "LengthThresholdPolicy",
     "LearnedLogisticPolicy",
     "MechanisticPolicy",
+    "CostPerformancePolicy",
+    "SemanticPolicy",
+    "CausalProbePolicy",
 ]

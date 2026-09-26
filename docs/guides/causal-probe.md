@@ -64,7 +64,36 @@ if __name__ == "__main__":
 
 ---
 
-## 3. Running the Empirical Spike Experiment
+## 3. Gateway Integration
+
+The `CausalProbeRouter` can be activated dynamically in the production OpenAI-compatible gateway either per-request or globally:
+
+### Via Request Header
+```bash
+curl -X POST http://localhost:8000/v1/chat/completions \
+  -H "Authorization: Bearer $ROUTER_API_KEY" \
+  -H "X-Router-Strategy: causal-probe" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "auto",
+    "messages": [{"role": "user", "content": "Prove that the square root of 2 is irrational."}]
+  }'
+```
+
+### Via Virtual Model Identifier
+```bash
+curl -X POST http://localhost:8000/v1/chat/completions \
+  -H "Authorization: Bearer $ROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "causal-probe-auto",
+    "messages": [{"role": "user", "content": "Prove that the square root of 2 is irrational."}]
+  }'
+```
+
+---
+
+## 4. Running the Empirical Spike Experiment
 
 To reproduce the experimental findings reported in `docs/MECHANISTIC_SPIKE_REPORT.md`:
 
