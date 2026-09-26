@@ -1,6 +1,7 @@
 """Baseline and Candidate Router Policies for Pareto Benchmarking."""
 
 import asyncio
+import concurrent.futures
 import random
 from abc import ABC, abstractmethod
 
@@ -94,9 +95,7 @@ class LengthThresholdPolicy(BasePolicy):
         self.model_pool = model_pool
         self.threshold = default_threshold_words
         self.cheap_model = min(model_pool.values(), key=lambda m: m.cost).name
-        self.strong_model = max(
-            model_pool.values(), key=lambda m: (m.base_accuracy, m.cost)
-        ).name
+        self.strong_model = max(model_pool.values(), key=lambda m: (m.base_accuracy, m.cost)).name
 
     def tune(self, dev_cases: list[EvalCase]) -> None:
         """Tune threshold on dev split to maximize quality at acceptable cost."""
@@ -153,7 +152,8 @@ class LearnedLogisticPolicy(BasePolicy):
 
         cheap_model = min(self.model_pool.values(), key=lambda m: m.cost).name
         mid_models = [
-            m.name for m in self.model_pool.values()
+            m.name
+            for m in self.model_pool.values()
             if m.cost > self.model_pool[cheap_model].cost and m.cost < 1.0
         ]
         mid_model = mid_models[0] if mid_models else cheap_model
@@ -208,6 +208,7 @@ class MechanisticPolicy(BasePolicy):
         self.config = config
         self.encoder = encoder or SharedTrunkEncoder(config)
         self.router = MechanisticRouter(self.encoder, model_pool, config)
+        self._executor: concurrent.futures.ThreadPoolExecutor | None = None
 
     def select_model(self, prompt: str) -> str:
         try:
@@ -216,9 +217,9 @@ class MechanisticPolicy(BasePolicy):
             loop = None
 
         if loop and loop.is_running():
-            import concurrent.futures
-            with concurrent.futures.ThreadPoolExecutor() as pool:
-                decision = pool.submit(asyncio.run, self.router.route(prompt)).result()
+            if self._executor is None:
+                self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+            decision = self._executor.submit(asyncio.run, self.router.route(prompt)).result()
         else:
             decision = asyncio.run(self.router.route(prompt))
 

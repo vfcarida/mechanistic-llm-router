@@ -1,6 +1,7 @@
 """CostPerformanceRouter Strategy Implementation."""
 
 import time
+
 from ..config import RouterConfig
 from ..models.pool import get_model_accuracy
 from ..models.types import TargetModel, TaskComplexity
@@ -34,7 +35,7 @@ class CostPerformanceRouter(AbstractRouter):
         for name, model in self.model_pool.items():
             ceiling_idx = complexity_order.index(model.complexity_ceiling)
             accuracy = get_model_accuracy(model, estimated_complexity)
-            
+
             # Competent if request complexity is below or equal to ceiling
             is_competent = req_idx <= ceiling_idx
 

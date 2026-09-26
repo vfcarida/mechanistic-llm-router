@@ -23,5 +23,14 @@ plugins:
 
 nav:
   - Home: index.md
+  - Getting Started:
+      - Installation: getting-started/installation.md
+      - Quickstart: getting-started/quickstart.md
+  - Guides:
+      - Causal Probing: guides/causal-probe.md
+      - RouterBench Evaluation: guides/routerbench.md
   - Architecture: architecture.md
-  - Baseline Record: BASELINE.md
+  - Reports:
+      - Baseline Record: BASELINE.md
+      - Mechanistic Spike: MECHANISTIC_SPIKE_REPORT.md
+      - Benchmark Report: BENCHMARK_REPORT.md

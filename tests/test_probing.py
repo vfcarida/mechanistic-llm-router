@@ -2,13 +2,16 @@
 
 import pytest
 import torch
+
 from mechanistic_router.core.encoder import SharedTrunkEncoder
 from mechanistic_router.probing.nnsight_probe import NNsightProbe
 from mechanistic_router.probing.sae_engine import SAEEngine
 from mechanistic_router.probing.transformer_lens_hook import TransformerLensHook
 
 
-def test_transformer_lens_hook(mock_encoder: SharedTrunkEncoder, sample_input_ids: torch.Tensor) -> None:
+def test_transformer_lens_hook(
+    mock_encoder: SharedTrunkEncoder, sample_input_ids: torch.Tensor
+) -> None:
     """Test forward hook registration and activation capture."""
     hook_mgr = TransformerLensHook(mock_encoder)
     hook_mgr.register_hooks([])

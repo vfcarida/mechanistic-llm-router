@@ -2,10 +2,13 @@
 
 import pytest
 import torch
+
 from mechanistic_router.core.encoder import SharedTrunkEncoder
 
 
-def test_encoder_forward_pass(mock_encoder: SharedTrunkEncoder, sample_input_ids: torch.Tensor) -> None:
+def test_encoder_forward_pass(
+    mock_encoder: SharedTrunkEncoder, sample_input_ids: torch.Tensor
+) -> None:
     """Test forward pass output shapes and activation layer collection."""
     output, activations = mock_encoder(sample_input_ids)
 

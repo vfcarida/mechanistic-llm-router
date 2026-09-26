@@ -93,8 +93,8 @@ async def test_effective_dimensionality_is_dynamic(legacy_router: MechanisticRou
 def test_core_router_deprecation_warning() -> None:
     """Verify importing mechanistic_router.core.router emits DeprecationWarning."""
     import importlib
+
     import mechanistic_router.core.router as legacy_router_mod
 
     with pytest.deprecated_call():
         importlib.reload(legacy_router_mod)
-

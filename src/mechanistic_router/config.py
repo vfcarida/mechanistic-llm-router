@@ -1,6 +1,7 @@
 """Global Configuration Module using Pydantic v2 Settings."""
 
 from typing import Final
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -35,7 +36,9 @@ class RouterConfig(BaseSettings):
         default=0.30, description="Minimum Fisher J score for competence gating."
     )
 
-    embedding_dim: int = Field(default=384, description="Vector embedding dimension for semantic router.")
+    embedding_dim: int = Field(
+        default=384, description="Vector embedding dimension for semantic router."
+    )
     similarity_threshold: float = Field(
         default=0.85, description="Cosine similarity threshold for semantic matching."
     )

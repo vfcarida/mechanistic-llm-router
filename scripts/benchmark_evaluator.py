@@ -2,7 +2,9 @@
 
 import asyncio
 from typing import Any
+
 import pandas as pd
+
 from mechanistic_router.config import DEFAULT_CONFIG
 from mechanistic_router.core.encoder import SharedTrunkEncoder
 from mechanistic_router.data.mock_dataset import create_financial_dataset
@@ -54,7 +56,9 @@ async def evaluate_benchmark(n_samples: int = 150) -> None:
 
     # Add Oracle Baseline (always routes to frontier model)
     oracle = MODEL_POOL["LLM-Frontier-Oracle"]
-    oracle_score = sum(case.per_model_outcome["LLM-Frontier-Oracle"] for case in dataset) / n_samples
+    oracle_score = (
+        sum(case.per_model_outcome["LLM-Frontier-Oracle"] for case in dataset) / n_samples
+    )
     results.append(
         {
             "Strategy": "Oracle (Frontier Only)",

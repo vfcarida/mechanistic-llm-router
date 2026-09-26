@@ -1,7 +1,12 @@
 """Pytest Global Fixtures and Mocks Setup."""
 
+import os
+
 import pytest
 import torch
+
+os.environ.setdefault("ROUTER_API_KEY", "test-router-key")
+
 from mechanistic_router.config import DEFAULT_CONFIG, RouterConfig
 from mechanistic_router.core.encoder import SharedTrunkEncoder
 from mechanistic_router.models.pool import MODEL_POOL

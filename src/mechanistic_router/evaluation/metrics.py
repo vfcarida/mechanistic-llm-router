@@ -161,26 +161,13 @@ def compute_paired_bootstrap_ci(
 
     rng = np.random.RandomState(seed)
 
-    boot_c_cand = np.empty(n_bootstraps)
-    boot_a_cand = np.empty(n_bootstraps)
-    boot_c_base = np.empty(n_bootstraps)
-    boot_a_base = np.empty(n_bootstraps)
-    boot_delta_a = np.empty(n_bootstraps)
-    boot_delta_c = np.empty(n_bootstraps)
-
-    for b in range(n_bootstraps):
-        indices = rng.randint(0, n, size=n)
-        mean_c_c = np.mean(c_cand[indices])
-        mean_a_c = np.mean(a_cand[indices])
-        mean_c_b = np.mean(c_base[indices])
-        mean_a_b = np.mean(a_base[indices])
-
-        boot_c_cand[b] = mean_c_c
-        boot_a_cand[b] = mean_a_c
-        boot_c_base[b] = mean_c_b
-        boot_a_base[b] = mean_a_b
-        boot_delta_a[b] = mean_a_c - mean_a_b
-        boot_delta_c[b] = mean_c_c - mean_c_b
+    indices = rng.randint(0, n, size=(n_bootstraps, n))
+    boot_c_cand = np.mean(c_cand[indices], axis=1)
+    boot_a_cand = np.mean(a_cand[indices], axis=1)
+    boot_c_base = np.mean(c_base[indices], axis=1)
+    boot_a_base = np.mean(a_base[indices], axis=1)
+    boot_delta_a = boot_a_cand - boot_a_base
+    boot_delta_c = boot_c_cand - boot_c_base
 
     lower_pct = 100.0 * (alpha / 2.0)
     upper_pct = 100.0 * (1.0 - alpha / 2.0)

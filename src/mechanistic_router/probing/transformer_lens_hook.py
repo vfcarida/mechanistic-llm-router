@@ -1,6 +1,8 @@
 """TransformerLens Hook Module for Local SLM Prefill Probing."""
 
+from collections.abc import Callable
 from typing import Any
+
 import torch
 import torch.nn as nn
 
@@ -28,7 +30,7 @@ class TransformerLensHook:
                 hook = module.register_forward_hook(self._make_hook(name))
                 self._hooks.append(hook)
 
-    def _make_hook(self, layer_name: str):
+    def _make_hook(self, layer_name: str) -> Callable[[nn.Module, Any, Any], None]:
         def hook_fn(module: nn.Module, input_tensor: Any, output_tensor: Any) -> None:
             if isinstance(output_tensor, tuple):
                 act = output_tensor[0]

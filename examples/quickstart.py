@@ -1,6 +1,7 @@
 """Quickstart Example Script for Mechanistic LLM Router."""
 
 import asyncio
+
 from mechanistic_router.config import DEFAULT_CONFIG
 from mechanistic_router.core.encoder import SharedTrunkEncoder
 from mechanistic_router.models.pool import MODEL_POOL
@@ -21,7 +22,8 @@ async def main() -> None:
         ("What is my current credit card statement balance?", TaskComplexity.ROUTINE),
         ("How can I renegociate a $5,000 debt considering installments?", TaskComplexity.MODERATE),
         (
-            "Perform a complete risk analysis on my DTI ratio, LTV, and credit history projection over 12 months.",
+            "Perform a complete risk analysis on my DTI ratio, LTV, and credit "
+            "history projection over 12 months.",
             TaskComplexity.COMPLEX,
         ),
     ]

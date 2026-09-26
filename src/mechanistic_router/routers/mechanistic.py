@@ -1,5 +1,6 @@
 """MechanisticRouter Strategy Implementation."""
 
+import hashlib
 import math
 import time
 
@@ -7,9 +8,9 @@ import numpy as np
 import torch
 
 from ..config import RouterConfig
-from ..core.encoder import SharedTrunkEncoder
 from ..models.pool import get_model_accuracy
 from ..models.types import TargetModel, TaskComplexity
+from ..probing.base import AbstractEncoder
 from ..schemas.routing import ProbingSignals, RoutingDecision, RoutingRequest
 from ..signals.math_utils import compute_effective_dimensionality, compute_fisher_separability
 from ..utils.metrics import normalized_accuracy, normalized_inverse_cost
@@ -28,13 +29,13 @@ class MechanisticRouter(AbstractRouter):
 
     def __init__(
         self,
-        encoder: SharedTrunkEncoder,
+        encoder: AbstractEncoder,
         model_pool: dict[str, TargetModel],
         config: RouterConfig,
     ):
         super().__init__(model_pool, config)
-        if not isinstance(encoder, SharedTrunkEncoder):
-            raise TypeError("encoder must be an instance of SharedTrunkEncoder")
+        if not isinstance(encoder, AbstractEncoder):
+            raise TypeError("encoder must be an instance of SharedTrunkEncoder or AbstractEncoder")
         self.encoder = encoder
         self.encoder.eval()
 
@@ -50,7 +51,8 @@ class MechanisticRouter(AbstractRouter):
             return torch.tensor([[0]], dtype=torch.long)
 
         words = clean_text.split()[:50]
-        tokens = [(sum(bytearray(word, "utf-8")) % self.encoder.vocab_size) for word in words]
+        vocab_size = int(getattr(self.encoder, "vocab_size", 10000))
+        tokens = [(sum(bytearray(word, "utf-8")) % vocab_size) for word in words]
         if not tokens:
             tokens = [0]
         return torch.tensor([tokens], dtype=torch.long)
@@ -79,7 +81,6 @@ class MechanisticRouter(AbstractRouter):
         n_samples_per_class = 20
         delta = competence * 0.5
 
-        import hashlib
         name_hash = int(hashlib.md5(model.name.encode("utf-8")).hexdigest(), 16)
         rng = torch.Generator()
         rng.manual_seed(name_hash % (2**31))
@@ -164,9 +165,10 @@ class MechanisticRouter(AbstractRouter):
                         if log_ratio > 1e-10
                         else 0.5
                     )
-                    score = effective_lambda * log_cost_score + (
-                        1.0 - effective_lambda
-                    ) * sig.extra_metadata["acc_norm"]
+                    score = (
+                        effective_lambda * log_cost_score
+                        + (1.0 - effective_lambda) * sig.extra_metadata["acc_norm"]
+                    )
                 else:
                     score = (
                         (1.0 - effective_lambda)

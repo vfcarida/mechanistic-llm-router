@@ -189,9 +189,7 @@ class BenchmarkHarness:
         adv_candidates = [r for r in policy_results if r.policy_name not in excluded_baselines]
 
         strictly_dominates_cheap = any(
-            r.is_on_pareto_front
-            and r.delta_accuracy_ci[0] > 0.0
-            and r.delta_cost_ci[1] <= 0.0
+            r.is_on_pareto_front and r.delta_accuracy_ci[0] > 0.0 and r.delta_cost_ci[1] <= 0.0
             for r in adv_candidates
         )
 

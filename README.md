@@ -158,6 +158,7 @@ from mechanistic_router.models.pool import MODEL_POOL
 from mechanistic_router.routers.mechanistic import MechanisticRouter
 from mechanistic_router.schemas.routing import RoutingRequest
 
+
 async def run_routing_example():
     # Initialize prefill encoder and router
     encoder = SharedTrunkEncoder(DEFAULT_CONFIG)
@@ -168,11 +169,11 @@ async def run_routing_example():
         prompt="Analyze my debt-to-income ratio and project credit score impact."
     )
 
-
     decision = await router.route(request)
     print(f"Selected Target Route: {decision.selected_model}")
     print(f"Modeled Cost: ${decision.estimated_cost_usd:.4f}")
     print(f"Decision Latency: {decision.latency_ms:.2f} ms")
+
 
 if __name__ == "__main__":
     asyncio.run(run_routing_example())

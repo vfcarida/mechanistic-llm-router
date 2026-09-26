@@ -95,9 +95,7 @@ def format_report_markdown(summary, dataset_type: str) -> str:
         "Δ Acc vs Cheap (%) [95% CI] | Δ Cost vs Cheap ($) [95% CI] | "
         "Denominators (N, Fail) | Pareto Front? |"
     )
-    md.append(
-        "|---|:---:|:---:|:---:|:---:|:---:|:---:|"
-    )
+    md.append("|---|:---:|:---:|:---:|:---:|:---:|:---:|")
 
     for r in summary.results:
         cost_str = f"${r.mean_cost:.4f} [${r.cost_ci[0]:.4f}, ${r.cost_ci[1]:.4f}]"
@@ -110,8 +108,7 @@ def format_report_markdown(summary, dataset_type: str) -> str:
             f"[{r.delta_accuracy_ci[0] * 100:+.2f}%, {r.delta_accuracy_ci[1] * 100:+.2f}%]"
         )
         delta_cost_str = (
-            f"${r.delta_cost:+.4f} "
-            f"[${r.delta_cost_ci[0]:+.4f}, ${r.delta_cost_ci[1]:+.4f}]"
+            f"${r.delta_cost:+.4f} [${r.delta_cost_ci[0]:+.4f}, ${r.delta_cost_ci[1]:+.4f}]"
         )
         pareto_str = "**Yes**" if r.is_on_pareto_front else "No"
         denom_str = f"{r.n_evaluated} ({r.n_failures})"

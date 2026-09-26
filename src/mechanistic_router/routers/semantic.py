@@ -2,7 +2,9 @@
 
 import math
 import time
+
 import numpy as np
+
 from ..config import RouterConfig
 from ..models.types import TargetModel, TaskComplexity
 from ..schemas.routing import ProbingSignals, RoutingDecision, RoutingRequest
@@ -72,7 +74,10 @@ class SemanticRouter(AbstractRouter):
                 fisher_j=sim_val * 2.0,
                 fisher_j_norm=sim_val,
                 is_competent=is_competent,
-                extra_metadata={"inferred_complexity": inferred_complexity.value, "similarity": sim_val},
+                extra_metadata={
+                    "inferred_complexity": inferred_complexity.value,
+                    "similarity": sim_val,
+                },
             )
 
             if is_competent:

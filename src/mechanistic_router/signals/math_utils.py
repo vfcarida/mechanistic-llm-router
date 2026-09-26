@@ -1,6 +1,5 @@
 """Mathematical Signals and Pareto Optimization Utility Functions."""
 
-import numpy as np
 import torch
 
 
@@ -76,7 +75,8 @@ def compute_convex_hull(points: list[tuple[float, float]]) -> list[tuple[float, 
     """Computes the Non-decreasing Upper Convex Hull for Pareto Cost-Quality Frontiers.
 
     Graphs optimal trade-off bounds mapping cost (x-axis) to quality/accuracy (y-axis).
-    Filters dominated strategy points so that higher cost strictly guarantees monotonically non-decreasing quality.
+    Filters dominated strategy points so that higher cost strictly guarantees
+    monotonically non-decreasing quality.
 
     Args:
         points: List of (cost, quality) tuples.

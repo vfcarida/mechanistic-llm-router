@@ -1,10 +1,14 @@
 """OpenTelemetry FinOps and Observability Metrics Module."""
 
+import logging
+
 from opentelemetry import metrics
 from opentelemetry.exporter.prometheus import PrometheusMetricReader
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from prometheus_client import start_http_server
+
+logger = logging.getLogger(__name__)
 
 
 class RouterMetrics:
@@ -54,8 +58,13 @@ class RouterMetrics:
             try:
                 start_http_server(port=port)
                 self._exporter_started = True
-            except Exception:
-                pass  # Avoid crash if port is already bound during tests
+            except Exception as exc:
+                logger.warning(
+                    "Prometheus metrics exporter failed to bind on port %d: %s. "
+                    "Skipping exporter startup (normal if already running or in test).",
+                    port,
+                    exc,
+                )
 
     def record_route(
         self,

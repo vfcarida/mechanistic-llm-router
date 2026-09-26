@@ -1,12 +1,20 @@
 """LiteLLM Universal Provider Dispatcher Module."""
 
 import asyncio
+import json
 import logging
+from collections.abc import AsyncGenerator
 from typing import Any
 
 import litellm
 
-from ..schemas.openai import ChatCompletionRequest, ChatCompletionResponse
+from ..schemas.openai import (
+    ChatCompletionChoice,
+    ChatCompletionMessage,
+    ChatCompletionRequest,
+    ChatCompletionResponse,
+    UsageInfo,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +71,7 @@ class LiteLLMDispatcher:
         """
         messages_dict = [msg.model_dump(exclude_none=True) for msg in request.messages]
 
+        last_exc: Exception | None = None
         for attempt in range(self.max_retries):
             try:
                 # Call litellm async completion endpoint
@@ -76,27 +85,39 @@ class LiteLLMDispatcher:
                 )
 
                 # Format response into Pydantic schema
+                content = ""
+                if hasattr(response, "choices") and response.choices:
+                    content = getattr(response.choices[0].message, "content", "") or ""
+
+                usage_obj = getattr(response, "usage", None)
+                prompt_tokens = int(getattr(usage_obj, "prompt_tokens", 10))
+                completion_tokens = int(getattr(usage_obj, "completion_tokens", 20))
+                total_tokens = int(
+                    getattr(usage_obj, "total_tokens", prompt_tokens + completion_tokens)
+                )
+
                 return ChatCompletionResponse(
                     id=getattr(response, "id", "chatcmpl-mocked"),
                     model=target_model,
                     choices=[
-                        {
-                            "index": 0,
-                            "message": {
-                                "role": "assistant",
-                                "content": response.choices[0].message.content or "",
-                            },
-                            "finish_reason": "stop",
-                        }
+                        ChatCompletionChoice(
+                            index=0,
+                            message=ChatCompletionMessage(
+                                role="assistant",
+                                content=content,
+                            ),
+                            finish_reason="stop",
+                        )
                     ],
-                    usage={
-                        "prompt_tokens": getattr(response.usage, "prompt_tokens", 10),
-                        "completion_tokens": getattr(response.usage, "completion_tokens", 20),
-                        "total_tokens": getattr(response.usage, "total_tokens", 30),
-                    },
+                    usage=UsageInfo(
+                        prompt_tokens=prompt_tokens,
+                        completion_tokens=completion_tokens,
+                        total_tokens=total_tokens,
+                    ),
                     router_strategy="LiteLLMDispatcher",
                 )
             except Exception as exc:
+                last_exc = exc
                 logger.warning(
                     "Dispatch attempt %d/%d for target_model=%s failed: %s",
                     attempt + 1,
@@ -106,18 +127,101 @@ class LiteLLMDispatcher:
                 )
                 if attempt < self.max_retries - 1:
                     await asyncio.sleep(self.cooldown_seconds * (2**attempt) * 0.1)
-                else:
-                    raise ProviderDispatchError(
-                        target_model=target_model,
-                        message=str(exc),
-                        status_code=502,
-                    ) from exc
 
         raise ProviderDispatchError(
             target_model=target_model,
-            message="Provider call failed after retries.",
+            message=str(last_exc) if last_exc else "No dispatch attempts configured.",
             status_code=502,
-        )
+        ) from last_exc
+
+    async def dispatch_stream(
+        self, target_model: str, request: ChatCompletionRequest
+    ) -> AsyncGenerator[str, None]:
+        """Executes streaming completion call via LiteLLM and yields SSE events.
+
+        Yields:
+            Formatted Server-Sent Event (SSE) strings like 'data: {...}\\n\\n' followed
+            by 'data: [DONE]\\n\\n'.
+
+        Raises:
+            ProviderDispatchError: When upstream provider fails during initialization.
+        """
+        messages_dict = [msg.model_dump(exclude_none=True) for msg in request.messages]
+        last_exc: Exception | None = None
+        for attempt in range(self.max_retries):
+            try:
+                response = await litellm.acompletion(
+                    model=target_model,
+                    messages=messages_dict,
+                    temperature=request.temperature,
+                    top_p=request.top_p,
+                    max_tokens=request.max_tokens,
+                    stream=True,
+                )
+                if hasattr(response, "__aiter__"):
+                    async for chunk in response:
+                        content = ""
+                        if hasattr(chunk, "choices") and chunk.choices:
+                            delta = getattr(chunk.choices[0], "delta", None)
+                            content = getattr(delta, "content", "") or ""
+                        chunk_id = getattr(chunk, "id", "chatcmpl-stream")
+                        data_payload = json.dumps(
+                            {
+                                "id": chunk_id,
+                                "object": "chat.completion.chunk",
+                                "model": target_model,
+                                "choices": [
+                                    {
+                                        "index": 0,
+                                        "delta": {"content": content},
+                                        "finish_reason": None,
+                                    }
+                                ],
+                            }
+                        )
+                        yield f"data: {data_payload}\n\n"
+                elif hasattr(response, "__iter__"):
+                    for chunk in response:
+                        content = ""
+                        if hasattr(chunk, "choices") and chunk.choices:
+                            delta = getattr(chunk.choices[0], "delta", None)
+                            content = getattr(delta, "content", "") or ""
+                        chunk_id = getattr(chunk, "id", "chatcmpl-stream")
+                        data_payload = json.dumps(
+                            {
+                                "id": chunk_id,
+                                "object": "chat.completion.chunk",
+                                "model": target_model,
+                                "choices": [
+                                    {
+                                        "index": 0,
+                                        "delta": {"content": content},
+                                        "finish_reason": None,
+                                    }
+                                ],
+                            }
+                        )
+                        yield f"data: {data_payload}\n\n"
+
+                yield "data: [DONE]\n\n"
+                return
+            except Exception as exc:
+                last_exc = exc
+                logger.warning(
+                    "Streaming dispatch attempt %d/%d for target_model=%s failed: %s",
+                    attempt + 1,
+                    self.max_retries,
+                    target_model,
+                    str(exc),
+                )
+                if attempt < self.max_retries - 1:
+                    await asyncio.sleep(self.cooldown_seconds * (2**attempt) * 0.1)
+
+        raise ProviderDispatchError(
+            target_model=target_model,
+            message=str(last_exc) if last_exc else "Streaming dispatch failed.",
+            status_code=502,
+        ) from last_exc
 
 
 __all__ = ["LiteLLMDispatcher", "ProviderDispatchError"]

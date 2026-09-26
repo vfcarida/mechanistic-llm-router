@@ -1,6 +1,7 @@
 """SAELens Sparse Autoencoder Feature Extraction Engine."""
 
 from typing import Any
+
 import torch
 import torch.nn as nn
 
@@ -40,9 +41,7 @@ class SAEEngine(nn.Module):
         """Reconstructs original activation tensor from sparse feature vectors."""
         return torch.matmul(feature_acts, self.W_dec) + self.b_dec
 
-    def extract_active_circuits(
-        self, x: torch.Tensor, threshold: float = 0.1
-    ) -> dict[str, Any]:
+    def extract_active_circuits(self, x: torch.Tensor, threshold: float = 0.1) -> dict[str, Any]:
         """Extracts active feature indices and classifies cognitive burden type.
 
         Args:
@@ -50,7 +49,8 @@ class SAEEngine(nn.Module):
             threshold: Minimum activation threshold for feature firing.
 
         Returns:
-            Dictionary containing active feature indices, sparsity ratio, and cognitive classification.
+            Dictionary containing active feature indices, sparsity ratio, and
+            cognitive classification.
         """
         if x.ndim == 3:
             x = x.mean(dim=1)  # Pool sequence dimension -> [batch, d_in]
@@ -78,5 +78,9 @@ class SAEEngine(nn.Module):
             "total_active_features": len(unique_indices),
             "sparsity_ratio": float(len(unique_indices) / self.d_sae),
             "circuit_type": circuit_type,
-            "requires_oracle": circuit_type in ("polysemantic_reasoning", "mathematical_computation"),
+            "requires_oracle": circuit_type
+            in (
+                "polysemantic_reasoning",
+                "mathematical_computation",
+            ),
         }

@@ -21,8 +21,8 @@ def create_financial_dataset(n_samples: int = 200, seed: int = 42) -> list[EvalC
 
     Deprecated: import from `tests.fixtures.mock_dataset` instead.
     """
-    from tests.fixtures.mock_dataset import (
-        create_financial_dataset as _fixture_create_dataset,
+    from ..evaluation.dataset import (
+        create_financial_dataset as _eval_create_dataset,
     )
 
-    return _fixture_create_dataset(n_samples=n_samples, seed=seed)
+    return _eval_create_dataset(n_samples=n_samples, seed=seed)

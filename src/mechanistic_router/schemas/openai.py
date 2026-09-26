@@ -2,13 +2,16 @@
 
 import time
 from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
 class ChatCompletionMessage(BaseModel):
     """OpenAI message format payload."""
 
-    role: Literal["system", "user", "assistant", "function"] = Field(..., description="Message author role.")
+    role: Literal["system", "user", "assistant", "function"] = Field(
+        ..., description="Message author role."
+    )
     content: str = Field(..., description="Text content of the message.")
     name: str | None = Field(default=None, description="Optional author identifier.")
 
@@ -17,11 +20,15 @@ class ChatCompletionRequest(BaseModel):
     """Standard OpenAI /v1/chat/completions HTTP POST payload."""
 
     model: str = Field(default="mechanistic-auto", description="Model or router profile requested.")
-    messages: list[ChatCompletionMessage] = Field(..., min_length=1, description="Conversation history.")
+    messages: list[ChatCompletionMessage] = Field(
+        ..., min_length=1, description="Conversation history."
+    )
     temperature: float | None = Field(default=0.7, ge=0.0, le=2.0)
     top_p: float | None = Field(default=1.0, ge=0.0, le=1.0)
     n: int | None = Field(default=1, ge=1)
-    stream: bool | None = Field(default=False, description="Whether to stream response tokens via SSE.")
+    stream: bool | None = Field(
+        default=False, description="Whether to stream response tokens via SSE."
+    )
     max_tokens: int | None = Field(default=None, gt=0)
     presence_penalty: float | None = Field(default=0.0, ge=-2.0, le=2.0)
     frequency_penalty: float | None = Field(default=0.0, ge=-2.0, le=2.0)
@@ -54,4 +61,6 @@ class ChatCompletionResponse(BaseModel):
     choices: list[ChatCompletionChoice] = Field(...)
     usage: UsageInfo = Field(default_factory=UsageInfo)
     router_strategy: str | None = Field(default=None, description="Router strategy applied.")
-    cost_saved_usd: float | None = Field(default=None, description="Dynamic cost savings USD vs strongest model.")
+    cost_saved_usd: float | None = Field(
+        default=None, description="Dynamic cost savings USD vs strongest model."
+    )

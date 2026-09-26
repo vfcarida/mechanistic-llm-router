@@ -1,6 +1,7 @@
 """Unit Tests for Strategy Pattern Routers."""
 
 import pytest
+
 from mechanistic_router.config import RouterConfig
 from mechanistic_router.core.encoder import SharedTrunkEncoder
 from mechanistic_router.models.types import TargetModel

@@ -1,6 +1,5 @@
 """Unit Tests for OpenTelemetry Observability Metrics."""
 
-import pytest
 from mechanistic_router.observability.metrics import RouterMetrics
 
 

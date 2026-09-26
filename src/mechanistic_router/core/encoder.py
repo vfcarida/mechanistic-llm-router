@@ -4,9 +4,10 @@ import torch
 import torch.nn as nn
 
 from ..config import RouterConfig
+from ..probing.base import AbstractEncoder
 
 
-class SharedTrunkEncoder(nn.Module):
+class SharedTrunkEncoder(AbstractEncoder):
     """Simulator of a Lightweight Shared-Trunk Encoder under Encoder-Target Decoupling.
 
     In production deployment, this component represents the prefill stage of a
@@ -31,14 +32,16 @@ class SharedTrunkEncoder(nn.Module):
         self.vocab_size = 10000
         self.embedding = nn.Embedding(self.vocab_size, config.hidden_dim)
 
-        self.layers = nn.ModuleList([
-            nn.Sequential(
-                nn.Linear(config.hidden_dim, config.hidden_dim),
-                nn.LayerNorm(config.hidden_dim),
-                nn.ReLU(),
-            )
-            for _ in range(config.num_prefill_layers)
-        ])
+        self.layers = nn.ModuleList(
+            [
+                nn.Sequential(
+                    nn.Linear(config.hidden_dim, config.hidden_dim),
+                    nn.LayerNorm(config.hidden_dim),
+                    nn.ReLU(),
+                )
+                for _ in range(config.num_prefill_layers)
+            ]
+        )
 
     def forward(self, input_ids: torch.Tensor) -> tuple[torch.Tensor, list[torch.Tensor]]:
         """Executes the prefill forward pass and collects activation tensors.

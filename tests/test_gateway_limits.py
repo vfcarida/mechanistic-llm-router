@@ -113,8 +113,7 @@ def test_burst_rate_limit_returns_429(mock_acompletion: AsyncMock) -> None:
 
     try:
         responses = [
-            client.post("/v1/chat/completions", json=payload, headers=headers)
-            for _ in range(6)
+            client.post("/v1/chat/completions", json=payload, headers=headers) for _ in range(6)
         ]
         status_codes = [r.status_code for r in responses]
 

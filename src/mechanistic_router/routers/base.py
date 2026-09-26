@@ -1,7 +1,8 @@
 """Abstract Base Class for Routing Strategies (Strategy Pattern)."""
 
-from abc import ABC, abstractmethod
 import time
+from abc import ABC, abstractmethod
+
 from ..config import RouterConfig
 from ..models.types import TargetModel
 from ..schemas.routing import RoutingDecision, RoutingRequest

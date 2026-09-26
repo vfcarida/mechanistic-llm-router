@@ -1,7 +1,7 @@
 """Unit Tests for Mathematical Signals and Pareto Convex Hull Functions."""
 
-import pytest
 import torch
+
 from mechanistic_router.signals.math_utils import (
     compute_convex_hull,
     compute_effective_dimensionality,

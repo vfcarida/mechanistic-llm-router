@@ -1,13 +1,13 @@
 """Mechanistic Probing & SAE Circuit Extraction Demonstration Script."""
 
 import torch
+
 from mechanistic_router.config import DEFAULT_CONFIG
 from mechanistic_router.core.encoder import SharedTrunkEncoder
 from mechanistic_router.probing.sae_engine import SAEEngine
 from mechanistic_router.probing.transformer_lens_hook import TransformerLensHook
 from mechanistic_router.signals.math_utils import (
     compute_effective_dimensionality,
-    compute_fisher_separability,
 )
 
 
@@ -29,9 +29,7 @@ def main() -> None:
     print(f"Captured {len(layer_activations)} prefill layer activation tensors.")
 
     # Calculate Effective Dimensionality (d_eff)
-    d_eff_values = [
-        compute_effective_dimensionality(act.squeeze(0)) for act in layer_activations
-    ]
+    d_eff_values = [compute_effective_dimensionality(act.squeeze(0)) for act in layer_activations]
     print(f"Layer-wise Effective Dimensionality (d_eff): {[round(v, 2) for v in d_eff_values]}")
 
     # Extract SAE Cognitive Circuits
