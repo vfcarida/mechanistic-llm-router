@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from mechanistic_router.gateway.server import app, compute_cost_savings, rate_limiter
 from mechanistic_router.models.pool import MODEL_POOL
 from mechanistic_router.models.types import TargetModel, TaskComplexity
+from mechanistic_router.utils.metrics import normalized_accuracy, normalized_inverse_cost
 
 client = TestClient(app)
 
@@ -94,3 +95,35 @@ def test_gateway_chat_completions_reports_dynamic_cost_savings(
     # SLM route should save 1.50 - 0.02 = 1.48 USD
     assert res_data["cost_saved_usd"] == 1.48
     assert response.headers["x-cost-saved-usd"] == "1.48"
+
+
+def test_normalized_inverse_cost_uniform_and_invalid_pricing() -> None:
+    """Test normalized inverse cost with uniform pricing and invalid boundary values."""
+    # When cost_min == cost_max (uniform pricing), denominator is 0 -> returns 0.5 neutral score
+    assert normalized_inverse_cost(cost=0.10, cost_min=0.10, cost_max=0.10) == 0.5
+    assert normalized_inverse_cost(cost=1.50, cost_min=1.50, cost_max=1.50) == 0.5
+
+    # Invalid cost arguments must raise ValueError
+    with pytest.raises(ValueError, match="strictly positive"):
+        normalized_inverse_cost(cost=0.0, cost_min=0.02, cost_max=1.50)
+
+    with pytest.raises(ValueError, match="strictly positive"):
+        normalized_inverse_cost(cost=-0.50, cost_min=0.02, cost_max=1.50)
+
+    with pytest.raises(ValueError, match="strictly positive"):
+        normalized_inverse_cost(cost=0.50, cost_min=0.0, cost_max=1.50)
+
+
+def test_normalized_accuracy_edge_cases() -> None:
+    """Test normalized accuracy calculations across edge cases and zero range."""
+    # When accuracy floor equals ceiling -> returns 1.0
+    assert normalized_accuracy(accuracy=0.85, accuracy_floor=0.85, accuracy_ceiling=0.85) == 1.0
+
+    # Normal scaling
+    assert normalized_accuracy(
+        accuracy=0.80, accuracy_floor=0.70, accuracy_ceiling=0.90
+    ) == pytest.approx(0.5)
+
+    # Clamping outside bounds
+    assert normalized_accuracy(accuracy=0.50, accuracy_floor=0.70, accuracy_ceiling=0.90) == 0.0
+    assert normalized_accuracy(accuracy=1.00, accuracy_floor=0.70, accuracy_ceiling=0.90) == 1.0

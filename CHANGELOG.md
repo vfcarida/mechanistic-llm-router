@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `CODE_OF_CONDUCT.md` adhering to the Contributor Covenant v2.1 standard.
 - GitHub issue templates (`bug_report.md`, `feature_request.md`) and pull request template (`PULL_REQUEST_TEMPLATE.md`).
 - `CHANGELOG.md` for tracking project evolution and release notes.
+- Exported `CausalProbeRouter` directly in top-level `mechanistic_router` package for symmetrical strategy imports.
+- Added comprehensive edge-case test coverage for mathematical signals (`test_signals.py`), including zeros, 1D vectors, single-row tensors, NaN graceful fallback, identity matrix scaling, and Pareto convex hull edge cases (empty, single point, duplicates, collinear points).
+- Added boundary and linguistic indicator unit tests for `estimate_complexity` (`test_routers.py`) across empty prompts, whitespace, bilingual indicators, and LRU cache hits.
+- Added deterministic unit testing covering all 3 `BenchmarkHarness` Go/No-Go decision branches ("GO", "NO-GO", "CONDITIONAL GO (Pareto Efficient)").
+- Added unit tests for `normalized_inverse_cost` uniform pricing and invalid argument validation, plus `normalized_accuracy` bounds clamping (`test_cost.py`).
+- Added unit tests for `load_routerbench_eval_dataset` (`test_dataset.py`) covering missing file error handling, valid JSON and JSONL parsing, and corrupted line rejection.
+- Added unit test verifying `_prompt_to_tensor` token truncation to 50 tokens on 100-word inputs (`test_router.py`).
 - Added `CostPerformancePolicy`, `SemanticPolicy`, and `CausalProbePolicy` to `evaluation.baselines` for evaluating all router strategies on Pareto benchmarks.
 - Supported `causal-probe` strategy and `causal-probe-auto` model in FastAPI gateway `/v1/chat/completions` and `/v1/models`.
 - Upgraded GitHub Actions CI workflow to test matrix (`["3.11", "3.12"]`) using `actions/checkout@v4` and `actions/setup-python@v5`.

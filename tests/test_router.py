@@ -115,3 +115,21 @@ def test_estimate_complexity_lru_cache() -> None:
     info_after = estimate_complexity.cache_info()
     assert res1 == res2
     assert info_after.hits >= 1
+
+
+def test_prompt_to_tensor_truncation(legacy_router: MechanisticRouter) -> None:
+    """Verify that _prompt_to_tensor truncates long prompts to exactly 50 tokens."""
+    # 100-word prompt -> must truncate to 50 tokens
+    words_100 = "word " * 100
+    tensor_100 = legacy_router._prompt_to_tensor(words_100)
+    assert tensor_100.shape == (1, 50)
+
+    # Short prompt with 5 words -> shape (1, 5)
+    words_5 = "one two three four five"
+    tensor_5 = legacy_router._prompt_to_tensor(words_5)
+    assert tensor_5.shape == (1, 5)
+
+    # Empty prompt returns shape (1, 1) with fallback token [0]
+    tensor_empty = legacy_router._prompt_to_tensor("")
+    assert tensor_empty.shape == (1, 1)
+    assert tensor_empty.item() == 0

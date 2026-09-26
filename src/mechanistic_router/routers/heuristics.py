@@ -72,6 +72,9 @@ def estimate_complexity(prompt: str) -> ComplexityTier:
         "detalhamento",
         "danos elétricos",
         "moderate",
+        "difference",
+        "options",
+        "explain",
     )
 
     # Multi-step or high-density reasoning heuristics

@@ -4,8 +4,9 @@ import pytest
 
 from mechanistic_router.config import RouterConfig
 from mechanistic_router.core.encoder import SharedTrunkEncoder
-from mechanistic_router.models.types import TargetModel
+from mechanistic_router.models.types import TargetModel, TaskComplexity
 from mechanistic_router.routers.cost_performance import CostPerformanceRouter
+from mechanistic_router.routers.heuristics import estimate_complexity
 from mechanistic_router.routers.mechanistic import MechanisticRouter
 from mechanistic_router.routers.semantic import SemanticRouter
 from mechanistic_router.schemas.routing import RoutingRequest
@@ -78,3 +79,42 @@ async def test_semantic_router_custom_embedding(
     decision = await router.route(req)
     assert decision.strategy_used == "SemanticRouter"
     assert decision.selected_model in model_pool
+
+
+def test_estimate_complexity_boundary_cases() -> None:
+    """Test estimate_complexity heuristics across edge cases and boundary conditions."""
+    # Empty or whitespace-only prompts
+    assert estimate_complexity("") == TaskComplexity.ROUTINE
+    assert estimate_complexity("   \n\t   ") == TaskComplexity.ROUTINE
+
+    # Short routine prompt
+    assert estimate_complexity("Saldo em conta") == TaskComplexity.ROUTINE
+    assert estimate_complexity("Hello world") == TaskComplexity.ROUTINE
+
+    # Moderate markers or length (> 10 words)
+    assert (
+        estimate_complexity("Gostaria de ver o detalhamento das transações")
+        == TaskComplexity.MODERATE
+    )
+    assert estimate_complexity("Explain difference between these two") == TaskComplexity.MODERATE
+
+    # 11 words with no complex markers -> MODERATE due to word count > 10
+    eleven_words = "one two three four five six seven eight nine ten eleven"
+    assert estimate_complexity(eleven_words) == TaskComplexity.MODERATE
+
+    # Complex markers (English and Portuguese)
+    assert estimate_complexity("Calculate DTI and LTV for loan") == TaskComplexity.COMPLEX
+    assert (
+        estimate_complexity("Análise de portfólio e diversificação de risco")
+        == TaskComplexity.COMPLEX
+    )
+
+    # Long prompts (> 30 words) -> COMPLEX regardless of keywords
+    long_words = "word " * 35
+    assert estimate_complexity(long_words) == TaskComplexity.COMPLEX
+
+    # LRU cache verification: repeated calls hit cache
+    initial_hits = estimate_complexity.cache_info().hits
+    _ = estimate_complexity("Cached prompt test string")
+    _ = estimate_complexity("Cached prompt test string")
+    assert estimate_complexity.cache_info().hits > initial_hits

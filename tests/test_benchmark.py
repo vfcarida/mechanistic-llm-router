@@ -1,5 +1,7 @@
 """Unit and Integration Tests for MLR-T05 Baseline Pareto Benchmark and Policies."""
 
+from unittest.mock import patch
+
 from mechanistic_router.evaluation.baselines import (
     AlwaysCheapPolicy,
     AlwaysStrongPolicy,
@@ -171,3 +173,64 @@ def test_benchmark_harness_integration() -> None:
         assert res.n_failures == 0
         assert res.mean_cost > 0.0
         assert res.mean_accuracy > 0.0
+
+
+def test_benchmark_harness_go_no_go_branches() -> None:
+    """Test deterministic evaluation of all 3 Go/No-Go decision branches in BenchmarkHarness."""
+    dataset = load_synthetic_eval_dataset(n_samples=20, seed=42)
+    harness = BenchmarkHarness(seed=42)
+
+    # Branch 1: "GO" — candidate policy strictly dominates cheap baseline (CI acc > 0, CI cost <= 0)
+    mock_go = {
+        "candidate_acc_mean": 0.95,
+        "candidate_acc_ci": (0.90, 0.98),
+        "candidate_cost_mean": 0.02,
+        "candidate_cost_ci": (0.02, 0.02),
+        "delta_acc_mean": 0.25,
+        "delta_acc_ci": (0.10, 0.35),
+        "delta_cost_mean": 0.0,
+        "delta_cost_ci": (-0.01, 0.0),
+    }
+    with patch(
+        "mechanistic_router.evaluation.harness.compute_paired_bootstrap_ci",
+        return_value=mock_go,
+    ):
+        summary_go = harness.evaluate(dataset, is_synthetic=True, n_bootstraps=5)
+        assert summary_go.go_no_go_decision == "GO"
+
+    # Branch 2: "CONDITIONAL GO (Pareto Efficient)" — gains accuracy (CI acc > 0),
+    # but incurs cost (CI cost > 0)
+    mock_cond = {
+        "candidate_acc_mean": 0.95,
+        "candidate_acc_ci": (0.90, 0.98),
+        "candidate_cost_mean": 0.25,
+        "candidate_cost_ci": (0.20, 0.30),
+        "delta_acc_mean": 0.25,
+        "delta_acc_ci": (0.10, 0.35),
+        "delta_cost_mean": 0.20,
+        "delta_cost_ci": (0.15, 0.25),
+    }
+    with patch(
+        "mechanistic_router.evaluation.harness.compute_paired_bootstrap_ci",
+        return_value=mock_cond,
+    ):
+        summary_cond = harness.evaluate(dataset, is_synthetic=True, n_bootstraps=5)
+        assert summary_cond.go_no_go_decision == "CONDITIONAL GO (Pareto Efficient)"
+
+    # Branch 3: "NO-GO" — candidate policy fails to achieve significant gain (CI crosses 0)
+    mock_nogo = {
+        "candidate_acc_mean": 0.70,
+        "candidate_acc_ci": (0.65, 0.75),
+        "candidate_cost_mean": 0.05,
+        "candidate_cost_ci": (0.04, 0.06),
+        "delta_acc_mean": 0.0,
+        "delta_acc_ci": (-0.05, 0.05),
+        "delta_cost_mean": 0.03,
+        "delta_cost_ci": (0.02, 0.04),
+    }
+    with patch(
+        "mechanistic_router.evaluation.harness.compute_paired_bootstrap_ci",
+        return_value=mock_nogo,
+    ):
+        summary_nogo = harness.evaluate(dataset, is_synthetic=True, n_bootstraps=5)
+        assert summary_nogo.go_no_go_decision == "NO-GO"
