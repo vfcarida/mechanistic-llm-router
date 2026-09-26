@@ -5,7 +5,16 @@ import os
 import sys
 
 from mechanistic_router.evaluation import (
+    AlwaysCheapPolicy,
+    AlwaysStrongPolicy,
     BenchmarkHarness,
+    CausalProbePolicy,
+    CostPerformancePolicy,
+    LearnedLogisticPolicy,
+    LengthThresholdPolicy,
+    MechanisticPolicy,
+    RandomPolicy,
+    SemanticPolicy,
     load_routerbench_eval_dataset,
     load_synthetic_eval_dataset,
 )
@@ -50,6 +59,11 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default="docs/BENCHMARK_REPORT.md",
         help="Output filepath for generated benchmark report.",
+    )
+    parser.add_argument(
+        "--all-policies",
+        action="store_true",
+        help="Evaluate all 9 baseline policies (including CostPerformance, Semantic, CausalProbe).",
     )
     return parser.parse_args()
 
@@ -149,7 +163,22 @@ def main() -> int:
         is_synthetic = False
 
     print(f"Loaded {len(cases)} evaluation records.")
-    harness = BenchmarkHarness(seed=args.seed)
+    if args.all_policies:
+        policies = [
+            AlwaysCheapPolicy(),
+            AlwaysStrongPolicy(),
+            RandomPolicy(seed=args.seed),
+            LengthThresholdPolicy(),
+            LearnedLogisticPolicy(seed=args.seed),
+            MechanisticPolicy(),
+            CostPerformancePolicy(),
+            SemanticPolicy(),
+            CausalProbePolicy(),
+        ]
+        harness = BenchmarkHarness(policies=policies, seed=args.seed)
+    else:
+        harness = BenchmarkHarness(seed=args.seed)
+
     summary = harness.evaluate(cases=cases, is_synthetic=is_synthetic, n_bootstraps=args.bootstraps)
 
     report_content = format_report_markdown(summary, args.dataset)

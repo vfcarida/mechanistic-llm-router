@@ -300,6 +300,7 @@ async def verify_auth_and_rate_limit(
     return provided_key
 
 
+@app.get("/health")
 @app.get("/healthz")
 async def healthz() -> dict[str, str]:
     """Health check status endpoint."""

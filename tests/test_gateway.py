@@ -30,10 +30,12 @@ async def test_litellm_dispatcher_error_propagation() -> None:
 
 
 def test_gateway_healthz() -> None:
-    """Test /healthz REST endpoint."""
-    response = client.get("/healthz")
-    assert response.status_code == 200
-    assert response.json()["status"] == "ok"
+    """Test /health and /healthz REST healthcheck endpoints."""
+    for path in ("/health", "/healthz"):
+        response = client.get(path)
+        assert response.status_code == 200
+        assert response.json()["status"] == "ok"
+        assert response.json()["service"] == "mechanistic-llm-router-gateway"
 
 
 def test_gateway_list_models() -> None:

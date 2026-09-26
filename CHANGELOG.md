@@ -14,7 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SECURITY.md` security policy with responsible vulnerability disclosure instructions.
 - `CODE_OF_CONDUCT.md` adhering to the Contributor Covenant v2.1 standard.
 - GitHub issue templates (`bug_report.md`, `feature_request.md`) and pull request template (`PULL_REQUEST_TEMPLATE.md`).
-- `CHANGELOG.md` for tracking project evolution and release notes.
+- Added `--all-policies` CLI argument to `scripts/run_benchmark.py` and unit/CLI integration test suite in `tests/test_run_benchmark.py`.
+- Added `/health` endpoint alias in FastAPI gateway `server.py` alongside `/healthz` for universal healthchecker compatibility.
+- Added Docker `HEALTHCHECK` instruction to `Dockerfile` and updated base images to `python:3.12-slim`.
 - Exported `CausalProbeRouter` directly in top-level `mechanistic_router` package for symmetrical strategy imports.
 - Added comprehensive edge-case test coverage for mathematical signals (`test_signals.py`), including zeros, 1D vectors, single-row tensors, NaN graceful fallback, identity matrix scaling, and Pareto convex hull edge cases (empty, single point, duplicates, collinear points).
 - Added boundary and linguistic indicator unit tests for `estimate_complexity` (`test_routers.py`) across empty prompts, whitespace, bilingual indicators, and LRU cache hits.

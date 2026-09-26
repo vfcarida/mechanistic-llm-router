@@ -1,20 +1,23 @@
 # Baseline Pareto Benchmark & Go/No-Go Gate Report (MLR-T05)
 
-> [!NOTE]
-> **Data Provenance**: Evaluated on precomputed RouterBench dataset traces.
+> [!WARNING]
+> **Data Provenance**: Evaluated on synthetic financial prompt data. 
+> These figures are **illustrative** baseline demonstrations and do **NOT**
+> constitute empirical real-world validation. Results must be re-run on
+> RouterBench (arXiv:2403.12031) or production traces prior to deployment.
 
 ## 1. Executive Go/No-Go Decision Gate
 
 **Gate Decision**: `CONDITIONAL GO (Pareto Efficient)`
 
-**Justification**: Candidate policies (LengthThreshold) expand the Pareto frontier with statistically significant quality gains over AlwaysCheap (95% CI > 0), but incur higher cost. Proceed to T06 with strict latency and memory constraints.
+**Justification**: Candidate policies (LengthThreshold, LearnedLogistic (RouteLLM-Style), CausalProbeRouter) expand the Pareto frontier with statistically significant quality gains over AlwaysCheap (95% CI > 0), but incur higher cost. Proceed to T06 with strict latency and memory constraints.
 
 ## 2. Methodology & Leakage Isolation
 
 - **Prompt-Disjoint Partitioning**: Dataset partitioned into disjoint sets:
-  - **Train split**: 26 cases (used for LearnedLogistic fitting).
-  - **Dev split**: 8 cases (used for LengthThreshold tuning).
-  - **Test split**: 16 cases (used for unbiased Pareto evaluation).
+  - **Train split**: 171 cases (used for LearnedLogistic fitting).
+  - **Dev split**: 52 cases (used for LengthThreshold tuning).
+  - **Test split**: 77 cases (used for unbiased Pareto evaluation).
 - **Zero-Leakage Guarantee**: Router policies receive only `prompt` text;
   eval-only ground truth (`reference_tier`, `per_model_outcome`) is completely isolated.
 - **Uncertainty Quantification**: 1,000 paired bootstrap iterations over
@@ -24,24 +27,27 @@
 
 | Policy | Mean Cost ($) [95% CI] | Mean Accuracy (%) [95% CI] | Δ Acc vs Cheap (%) [95% CI] | Δ Cost vs Cheap ($) [95% CI] | Denominators (N, Fail) | Pareto Front? |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|
-| AlwaysCheap (SLM-Only) | $0.0200 [$0.0200, $0.0200] | 87.25% [84.44%, 90.06%] | +0.00% [+0.00%, +0.00%] | $+0.0000 [$+0.0000, $+0.0000] | 16 (0) | **Yes** |
-| AlwaysStrong (Oracle-Only) | $1.5000 [$1.5000, $1.5000] | 97.00% [97.00%, 97.00%] | +9.75% [+6.94%, +12.56%] | $+1.4800 [$+1.4800, $+1.4800] | 16 (0) | **Yes** |
-| Random | $0.6963 [$0.3112, $1.0519] | 90.44% [86.87%, 93.63%] | +3.19% [+0.65%, +6.67%] | $+0.6763 [$+0.2912, $+1.0319] | 16 (0) | No |
-| LengthThreshold | $0.6675 [$0.2975, $0.9936] | 93.62% [92.12%, 94.95%] | +6.37% [+2.06%, +10.69%] | $+0.6475 [$+0.2775, $+0.9736] | 16 (0) | **Yes** |
-| LearnedLogistic (RouteLLM-Style) | $0.1494 [$0.0987, $0.2069] | 85.56% [82.75%, 87.91%] | -1.69% [-2.44%, -1.03%] | $+0.1294 [$+0.0787, $+0.1869] | 16 (0) | No |
-| MechanisticRouter (Prefill-Probing) | $0.2356 [$0.2069, $0.2500] | 88.19% [88.00%, 88.56%] | +0.94% [-1.88%, +3.85%] | $+0.2156 [$+0.1869, $+0.2300] | 16 (0) | No |
+| AlwaysCheap (SLM-Only) | $0.0200 [$0.0200, $0.0200] | 87.30% [85.74%, 88.66%] | +0.00% [+0.00%, +0.00%] | $+0.0000 [$+0.0000, $+0.0000] | 77 (0) | **Yes** |
+| AlwaysStrong (Oracle-Only) | $1.5000 [$1.5000, $1.5000] | 97.00% [97.00%, 97.00%] | +9.70% [+8.34%, +11.26%] | $+1.4800 [$+1.4800, $+1.4800] | 77 (0) | **Yes** |
+| Random | $0.6948 [$0.5470, $0.8426] | 91.16% [89.79%, 92.56%] | +3.86% [+2.53%, +5.26%] | $+0.6748 [$+0.5270, $+0.8226] | 77 (0) | No |
+| LengthThreshold | $0.0200 [$0.0200, $0.0200] | 87.30% [85.74%, 88.66%] | +0.00% [+0.00%, +0.00%] | $+0.0000 [$+0.0000, $+0.0000] | 77 (0) | **Yes** |
+| LearnedLogistic (RouteLLM-Style) | $0.0499 [$0.0349, $0.0678] | 88.86% [87.81%, 89.87%] | +1.56% [+0.78%, +2.49%] | $+0.0299 [$+0.0149, $+0.0478] | 77 (0) | **Yes** |
+| MechanisticRouter (Prefill-Probing) | $0.2500 [$0.2500, $0.2500] | 88.00% [88.00%, 88.00%] | +0.70% [-0.66%, +2.26%] | $+0.2300 [$+0.2300, $+0.2300] | 77 (0) | No |
+| CostPerformanceRouter | $0.2500 [$0.2500, $0.2500] | 88.00% [88.00%, 88.00%] | +0.70% [-0.66%, +2.26%] | $+0.2300 [$+0.2300, $+0.2300] | 77 (0) | No |
+| SemanticRouter | $0.1932 [$0.1694, $0.2142] | 85.04% [83.79%, 86.13%] | -2.26% [-2.53%, -1.95%] | $+0.1732 [$+0.1494, $+0.1942] | 77 (0) | No |
+| CausalProbeRouter | $0.0200 [$0.0200, $0.0200] | 87.30% [85.74%, 88.66%] | +0.00% [+0.00%, +0.00%] | $+0.0000 [$+0.0000, $+0.0000] | 77 (0) | **Yes** |
 
 ## 4. Pareto Frontier Analysis
 
-- **Normalized Pareto AUC**: `0.9318`
+- **Normalized Pareto AUC**: `0.9283`
 - **Mathematical Convex Hull Frontier Points (Cost, Accuracy)**:
-  - Cost: `$0.0200` → Accuracy: `87.25%`
-  - Cost: `$0.6675` → Accuracy: `93.62%`
+  - Cost: `$0.0200` → Accuracy: `87.30%`
+  - Cost: `$0.0499` → Accuracy: `88.86%`
   - Cost: `$1.5000` → Accuracy: `97.00%`
 
 ### Matched Trade-off Analysis
-- Quality achievable at cheap cost: `87.25%`
-- Quality achievable at mid cost: `94.00%`
+- Quality achievable at cheap cost: `87.30%`
+- Quality achievable at mid cost: `92.84%`
 - Quality achievable at strong cost: `97.00%`
 
 ---

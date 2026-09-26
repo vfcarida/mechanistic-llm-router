@@ -32,11 +32,14 @@ Optional arguments:
 Execute the evaluation benchmark harness comparing all available baseline policies:
 
 ```bash
-# Run benchmark against RouterBench
+# Run benchmark against RouterBench with default baselines
 python scripts/run_benchmark.py --dataset routerbench
 
+# Run comprehensive benchmark across all 9 policies (including CostPerformance, Semantic, CausalProbe)
+python scripts/run_benchmark.py --dataset routerbench --all-policies
+
 # Output results in Markdown format
-python scripts/run_benchmark.py --dataset routerbench --format markdown --output docs/ROUTERBENCH_REPORT.md
+python scripts/run_benchmark.py --dataset routerbench --all-policies --output docs/ROUTERBENCH_REPORT.md
 ```
 
 ### Evaluated Policies
