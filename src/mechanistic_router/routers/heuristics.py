@@ -1,10 +1,13 @@
 """Internal Prompt Complexity Estimation Heuristics."""
 
+import functools
+
 from ..models.types import TaskComplexity
 
 ComplexityTier = TaskComplexity
 
 
+@functools.lru_cache(maxsize=4096)
 def estimate_complexity(prompt: str) -> ComplexityTier:
     """Estimates the task complexity tier purely from the raw prompt text.
 

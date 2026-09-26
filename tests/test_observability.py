@@ -16,6 +16,11 @@ def test_router_metrics_record() -> None:
         cost_saved_usd=1.48,
     )
 
+    assert metrics_mgr.genai_routing_duration is not None
+    assert metrics_mgr.genai_client_operation_duration is not None
+    assert metrics_mgr.genai_cost_saved is not None
+    assert metrics_mgr.genai_routing_requests is not None
+
     assert metrics_mgr._exporter_started is False
     metrics_mgr.start_exporter(port=9099)
     assert metrics_mgr._exporter_started is True

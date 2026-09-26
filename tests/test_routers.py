@@ -57,5 +57,24 @@ async def test_mechanistic_router(
     decision_routine = await router.route(req_routine)
     assert decision_routine.strategy_used == "MechanisticRouter"
     assert decision_routine.selected_model in model_pool
-    assert "SLM-BERTau-Local" in decision_routine.signals
     assert decision_routine.signals["SLM-BERTau-Local"].is_competent is True
+
+
+@pytest.mark.asyncio
+async def test_semantic_router_custom_embedding(
+    model_pool: dict[str, TargetModel], default_config: RouterConfig
+) -> None:
+    """Test SemanticRouter with custom user-provided embedding function."""
+    import numpy as np
+
+    dim = default_config.embedding_dim
+
+    def custom_embed(text: str) -> np.ndarray:
+        vec = np.ones(dim, dtype=np.float32)
+        return vec / np.linalg.norm(vec)
+
+    router = SemanticRouter(model_pool, default_config, embedding_fn=custom_embed)
+    req = RoutingRequest(prompt="Custom embedding test query")
+    decision = await router.route(req)
+    assert decision.strategy_used == "SemanticRouter"
+    assert decision.selected_model in model_pool

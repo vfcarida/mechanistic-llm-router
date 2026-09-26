@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `CODE_OF_CONDUCT.md` adhering to the Contributor Covenant v2.1 standard.
 - GitHub issue templates (`bug_report.md`, `feature_request.md`) and pull request template (`PULL_REQUEST_TEMPLATE.md`).
 - `CHANGELOG.md` for tracking project evolution and release notes.
+- Concrete `TransformerActivationEncoder` implementing `AbstractEncoder` over real HuggingFace transformer models (`AutoModel`, `AutoTokenizer`) for layer-wise prefill activation extraction.
+- Enhanced `SAEEngine` with Top-K activation sparsity (Gao et al. 2024), standard MSE reconstruction + L1 sparsity loss (`compute_loss`), and custom semantic `circuit_feature_map` matching.
+- OpenTelemetry GenAI semantic convention alignment (`P2-C`) in `RouterMetrics` with dual recording of `gen_ai.routing.duration`, `gen_ai.client.operation.duration`, `gen_ai.cost.saved`, and `gen_ai.routing.requests`.
+- LRU caching (`@functools.lru_cache(maxsize=4096)`) on `estimate_complexity` for $O(1)$ evaluation of repeated prompts (`PERF-03`).
+- Pluggable custom embedding function (`embedding_fn`) and centroids support in `SemanticRouter`.
 - Streaming response support (`stream=True`) in `LiteLLMDispatcher.dispatch_stream` and FastAPI `/v1/chat/completions` with SSE (`text/event-stream`).
 - Multi-turn conversation context extraction helper (`extract_routing_prompt`) in `gateway/server.py` to route based on complete dialogue flow.
 - Abstract base encoder interface `AbstractEncoder` for plugging external HuggingFace and local transformer backends.

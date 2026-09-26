@@ -2,6 +2,7 @@
 
 import math
 import time
+from collections.abc import Callable
 
 import numpy as np
 
@@ -16,25 +17,42 @@ class SemanticRouter(AbstractRouter):
 
     Maps incoming prompt text into a normalized embedding representation, comparing against
     reference centroid vectors for routine queries, moderate tasks, and complex reasoning.
+    Supports pluggable embedding models and custom intent centroids.
     """
 
-    def __init__(self, model_pool: dict[str, TargetModel], config: RouterConfig):
+    def __init__(
+        self,
+        model_pool: dict[str, TargetModel],
+        config: RouterConfig,
+        embedding_fn: Callable[[str], np.ndarray] | None = None,
+        custom_centroids: dict[TaskComplexity, np.ndarray] | None = None,
+    ):
         super().__init__(model_pool, config)
-        # Precomputed synthetic reference centroids for task complexity intents
-        rng = np.random.RandomState(config.seed)
-        dim = config.embedding_dim
-        self.intent_centroids = {
-            TaskComplexity.ROUTINE: self._normalize_vec(rng.randn(dim)),
-            TaskComplexity.MODERATE: self._normalize_vec(rng.randn(dim)),
-            TaskComplexity.COMPLEX: self._normalize_vec(rng.randn(dim)),
-        }
+        self.embedding_fn = embedding_fn
+        if custom_centroids is not None:
+            self.intent_centroids = {k: self._normalize_vec(v) for k, v in custom_centroids.items()}
+        else:
+            # Precomputed synthetic reference centroids for task complexity intents
+            rng = np.random.RandomState(config.seed)
+            dim = config.embedding_dim
+            self.intent_centroids = {
+                TaskComplexity.ROUTINE: self._normalize_vec(rng.randn(dim)),
+                TaskComplexity.MODERATE: self._normalize_vec(rng.randn(dim)),
+                TaskComplexity.COMPLEX: self._normalize_vec(rng.randn(dim)),
+            }
 
     def _normalize_vec(self, vec: np.ndarray) -> np.ndarray:
         norm = np.linalg.norm(vec)
         return vec / norm if norm > 1e-10 else vec
 
     def _embed_prompt(self, prompt: str) -> np.ndarray:
-        """Deterministic prompt embedding simulation using UTF-8 byte hashes."""
+        """Embeds prompt using custom embedding function if provided,
+        or deterministic byte hashes.
+        """
+        if self.embedding_fn is not None:
+            raw_vec = self.embedding_fn(prompt)
+            return self._normalize_vec(raw_vec)
+
         dim = self.config.embedding_dim
         vec = np.zeros(dim, dtype=np.float32)
         words = prompt.split()

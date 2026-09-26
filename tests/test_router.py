@@ -98,3 +98,20 @@ def test_core_router_deprecation_warning() -> None:
 
     with pytest.deprecated_call():
         importlib.reload(legacy_router_mod)
+
+
+def test_estimate_complexity_lru_cache() -> None:
+    """Verify estimate_complexity caches results with LRU cache."""
+    from mechanistic_router.routers.heuristics import estimate_complexity
+
+    estimate_complexity.cache_clear()
+    info_before = estimate_complexity.cache_info()
+    assert info_before.hits == 0
+
+    prompt = "Qual o meu saldo atual na conta?"
+    res1 = estimate_complexity(prompt)
+    res2 = estimate_complexity(prompt)
+
+    info_after = estimate_complexity.cache_info()
+    assert res1 == res2
+    assert info_after.hits >= 1

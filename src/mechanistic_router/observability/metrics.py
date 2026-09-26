@@ -28,7 +28,7 @@ class RouterMetrics:
 
         self.meter = metrics.get_meter("mechanistic_router.observability")
 
-        # Metric instruments
+        # Legacy metric instruments
         self.router_latency = self.meter.create_histogram(
             name="router.inference.latency_ms",
             description="Incremental router decision-making latency in milliseconds.",
@@ -47,6 +47,28 @@ class RouterMetrics:
         self.traffic_distribution = self.meter.create_counter(
             name="router.traffic.distribution",
             description="Total requests routed per target model candidate.",
+            unit="1",
+        )
+
+        # OpenTelemetry Standard GenAI Semantic Convention Instruments
+        self.genai_routing_duration = self.meter.create_histogram(
+            name="gen_ai.routing.duration",
+            description="Duration of router decision-making in milliseconds.",
+            unit="ms",
+        )
+        self.genai_client_operation_duration = self.meter.create_histogram(
+            name="gen_ai.client.operation.duration",
+            description="Raw upstream LLM generation latency in milliseconds.",
+            unit="ms",
+        )
+        self.genai_cost_saved = self.meter.create_counter(
+            name="gen_ai.cost.saved",
+            description="Cumulative financial USD saved versus frontier oracle baseline.",
+            unit="USD",
+        )
+        self.genai_routing_requests = self.meter.create_counter(
+            name="gen_ai.routing.requests",
+            description="Total number of routing requests partitioned by candidate model.",
             unit="1",
         )
 
@@ -83,9 +105,22 @@ class RouterMetrics:
             endpoint_latency_ms: Upstream execution latency in ms.
             cost_saved_usd: Financial savings delta in USD.
         """
+        # Legacy attributes
         attributes = {"target_model": route_name, "strategy": strategy}
 
         self.router_latency.record(router_latency_ms, attributes=attributes)
         self.endpoint_latency.record(endpoint_latency_ms, attributes=attributes)
         self.cost_saved_usd.add(cost_saved_usd, attributes=attributes)
         self.traffic_distribution.add(1, attributes=attributes)
+
+        # OpenTelemetry GenAI Semantic Convention attributes
+        genai_attributes = {
+            "gen_ai.response.model": route_name,
+            "gen_ai.routing.strategy": strategy,
+        }
+        self.genai_routing_duration.record(router_latency_ms, attributes=genai_attributes)
+        self.genai_client_operation_duration.record(
+            endpoint_latency_ms, attributes=genai_attributes
+        )
+        self.genai_cost_saved.add(cost_saved_usd, attributes=genai_attributes)
+        self.genai_routing_requests.add(1, attributes=genai_attributes)
