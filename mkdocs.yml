@@ -30,6 +30,13 @@ nav:
       - Causal Probing: guides/causal-probe.md
       - RouterBench Evaluation: guides/routerbench.md
   - Architecture: architecture.md
+  - Reference:
+      - Configuration: reference/config.md
+      - Routers & Strategies: reference/routers.md
+      - Gateway REST API: reference/gateway.md
+  - Development:
+      - Testing Guide: development/testing.md
+      - Release Process: development/releasing.md
   - Reports:
       - Baseline Record: BASELINE.md
       - Mechanistic Spike: MECHANISTIC_SPIKE_REPORT.md

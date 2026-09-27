@@ -1,11 +1,10 @@
-"""Verification tests for gateway security limits: auth, rate limiting, and size (MLR-T04)."""
-
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 
-from mechanistic_router.gateway.server import app, rate_limiter
+from mechanistic_router.gateway.server import TokenBucketRateLimiter, app, rate_limiter
 
 client = TestClient(app)
 
@@ -127,3 +126,37 @@ def test_burst_rate_limit_returns_429(mock_acompletion: AsyncMock) -> None:
     res_429 = responses[idx_429].json()
     assert res_429["error"]["type"] == "rate_limit_error"
     assert res_429["error"]["code"] == "rate_limit_exceeded"
+
+
+@pytest.mark.asyncio
+async def test_token_bucket_concurrent_acquisition() -> None:
+    """Ensure at most capacity requests succeed under simultaneous async execution."""
+    capacity = 5.0
+    limiter = TokenBucketRateLimiter(capacity=capacity, refill_rate=0.0)
+
+    # Fire 20 requests simultaneously with the same API key
+    tasks = [limiter.acquire("test_client_key_concurrent") for _ in range(20)]
+    results = await asyncio.gather(*tasks)
+
+    # Exactly capacity tokens must succeed, remainder must be denied
+    assert results.count(True) == int(capacity)
+    assert results.count(False) == 20 - int(capacity)
+
+
+@pytest.mark.asyncio
+async def test_token_bucket_multi_key_concurrency() -> None:
+    """Ensure concurrent bursts on independent keys remain completely isolated."""
+    capacity = 3.0
+    limiter = TokenBucketRateLimiter(capacity=capacity, refill_rate=0.0)
+
+    tasks_key_a = [limiter.acquire("client_alpha") for _ in range(10)]
+    tasks_key_b = [limiter.acquire("client_beta") for _ in range(10)]
+
+    all_results = await asyncio.gather(*(tasks_key_a + tasks_key_b))
+    results_a = all_results[:10]
+    results_b = all_results[10:]
+
+    assert results_a.count(True) == int(capacity)
+    assert results_a.count(False) == 7
+    assert results_b.count(True) == int(capacity)
+    assert results_b.count(False) == 7

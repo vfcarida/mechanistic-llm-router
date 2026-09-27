@@ -57,3 +57,54 @@ def test_sae_engine_custom_circuit_mapping() -> None:
     assert "circuit_type" in circuits
     assert circuits["circuit_type"] in ("mathematical_reasoning", "factual_retrieval")
     assert "sparsity_ratio" in circuits
+
+
+def test_sae_engine_extract_circuits_edge_cases() -> None:
+    """Verify SAEEngine.extract_active_circuits on boundary and edge conditions."""
+    d_in = 16
+    d_sae = 32
+    sae = SAEEngine(d_in=d_in, d_sae=d_sae)
+
+    # 1. Edge Case: No features active (threshold higher than any activation)
+    x_zero = torch.zeros(1, d_in)
+    circuits_none = sae.extract_active_circuits(x_zero, threshold=1e9)
+    assert circuits_none["active_feature_indices"] == []
+    assert circuits_none["total_active_features"] == 0
+    assert circuits_none["sparsity_ratio"] == 0.0
+    assert circuits_none["circuit_type"] == "factual_retrieval"
+    assert circuits_none["requires_oracle"] is False
+
+    # 2. Edge Case: Exactly single feature active (synthetic override)
+    with torch.no_grad():
+        # Zero out encoder weights and bias
+        sae.W_enc.zero_()
+        sae.b_enc.zero_()
+        sae.b_dec.zero_()
+        # Set feature index 5 (math reasoning: 5 % 5 == 0) to active
+        sae.b_enc[5] = 2.0
+
+    circuits_single_math = sae.extract_active_circuits(x_zero, threshold=0.5)
+    assert circuits_single_math["active_feature_indices"] == [5]
+    assert circuits_single_math["total_active_features"] == 1
+    assert circuits_single_math["sparsity_ratio"] == 1.0 / d_sae
+    assert circuits_single_math["circuit_type"] == "mathematical_computation"
+    assert circuits_single_math["requires_oracle"] is True
+
+    # 3. Edge Case: Single non-math, non-logic feature (index 1)
+    with torch.no_grad():
+        sae.b_enc.zero_()
+        sae.b_enc[1] = 1.5
+
+    circuits_single_routine = sae.extract_active_circuits(x_zero, threshold=0.5)
+    assert circuits_single_routine["active_feature_indices"] == [1]
+    assert circuits_single_routine["circuit_type"] == "factual_retrieval"
+    assert circuits_single_routine["requires_oracle"] is False
+
+    # 4. Edge Case: 1D tensor input (auto-unsqueeze)
+    x_1d = torch.zeros(d_in)
+    circuits_1d = sae.extract_active_circuits(x_1d, threshold=0.5)
+    assert circuits_1d["active_feature_indices"] == [1]
+
+    # 5. Edge Case: threshold = 0.0 boundary condition
+    circuits_zero_thresh = sae.extract_active_circuits(x_zero, threshold=0.0)
+    assert 1 in circuits_zero_thresh["active_feature_indices"]

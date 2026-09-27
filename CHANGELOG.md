@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Added concurrent rate limiter testing via `asyncio.gather` in `tests/test_gateway_limits.py` verifying capacity limits and cross-key concurrency isolation.
+- Added comprehensive boundary and edge-case unit tests in `tests/test_sae_engine.py` covering all-zero activations, single-feature activations, 1D tensor inputs, and `threshold=0.0`.
+- Dedicated API reference documentation: `docs/reference/config.md` (RouterConfig and env vars), `docs/reference/routers.md` (strategy contracts), and `docs/reference/gateway.md` (FastAPI REST endpoints and headers).
+- Developer workflows documentation: `docs/development/testing.md` (quality gates and label leakage invariants) and `docs/development/releasing.md` (SemVer 2.0.0 and distribution checklists).
+- Modernized `README.md` with GitHub Actions CI badge, empirical vs. simulated dual architecture flowchart, active `RouterConfig` settings table, and verified 100-test quality gates.
 - Secure serialization (`save`) and loading (`load`) in `LinearActivationProbe` using compressed NumPy archives (`.npz`), eliminating arbitrary code execution vulnerabilities from pickle.
 - Offline training (`fit`), probe checkpoint persistence (`save_probe`, `load_probe`), and factory method (`from_saved_probe`) in `CausalProbeRouter`.
 - Pure-NumPy vector math fallback in `LinearActivationProbe.predict_proba` and `decision_function`, enabling fast, secure inference in production without a `scikit-learn` runtime dependency.
