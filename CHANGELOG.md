@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Secure serialization (`save`) and loading (`load`) in `LinearActivationProbe` using compressed NumPy archives (`.npz`), eliminating arbitrary code execution vulnerabilities from pickle.
+- Offline training (`fit`), probe checkpoint persistence (`save_probe`, `load_probe`), and factory method (`from_saved_probe`) in `CausalProbeRouter`.
+- Pure-NumPy vector math fallback in `LinearActivationProbe.predict_proba` and `decision_function`, enabling fast, secure inference in production without a `scikit-learn` runtime dependency.
+- Architectural alias `SimulatedRouter = MechanisticRouter` in `mechanistic_router.routers.mechanistic` and package exports in `mechanistic_router.__init__.py` per the target architecture roadmap.
+- Standalone runnable demonstration script `examples/causal_probe_routing.py` showcasing probe training, serialization to disk, checkpoint reloading, and async multi-tier routing.
+- Comprehensive unit test suite in `tests/test_causal_probe_router.py` covering probe persistence fidelity, unfitted save rejection, missing file errors, pure-NumPy inference, and factory initialization.
 - `CONTRIBUTING.md` developer guide covering quality gates, coding conventions, and PR workflows.
 - `SECURITY.md` security policy with responsible vulnerability disclosure instructions.
 - `CODE_OF_CONDUCT.md` adhering to the Contributor Covenant v2.1 standard.

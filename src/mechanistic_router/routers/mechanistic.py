@@ -192,3 +192,9 @@ class MechanisticRouter(AbstractRouter):
             latency_ms=latency,
             signals=signals,
         )
+
+
+# Architectural alias: MechanisticRouter utilizes simulated SVD & Gaussian Fisher probing
+SimulatedRouter = MechanisticRouter
+
+__all__ = ["MechanisticRouter", "SimulatedRouter"]
