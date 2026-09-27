@@ -1,14 +1,22 @@
-"""Unit tests for TransformerActivationEncoder implementing AbstractEncoder."""
-
+from typing import Any
 from unittest.mock import MagicMock
 
+import numpy as np
 import torch
 import torch.nn as nn
 
+from mechanistic_router.probing.activation_extractor import PrefillActivationExtractor
 from mechanistic_router.probing.base import (
     AbstractEncoder,
     TransformerActivationEncoder,
 )
+
+
+class MockBatchEncoding(dict):
+    """Mock BatchEncoding dictionary supporting .to(device)."""
+
+    def to(self, device: str | torch.device) -> "MockBatchEncoding":
+        return self
 
 
 class MockTransformerModel(nn.Module):
@@ -19,7 +27,12 @@ class MockTransformerModel(nn.Module):
         self.hidden_dim = hidden_dim
         self.num_layers = num_layers
 
-    def forward(self, input_ids: torch.Tensor, output_hidden_states: bool = True) -> MagicMock:
+    def forward(
+        self,
+        input_ids: torch.Tensor,
+        output_hidden_states: bool = True,
+        **kwargs: Any,
+    ) -> MagicMock:
         batch_size, seq_len = input_ids.shape
         last_hidden = torch.randn(batch_size, seq_len, self.hidden_dim)
         hidden_states = [
@@ -38,8 +51,16 @@ class MockTokenizer:
     def __init__(self, vocab_size: int = 32000):
         self.vocab_size = vocab_size
 
-    def __call__(self, text: str, return_tensors: str = "pt") -> dict[str, torch.Tensor]:
-        return {"input_ids": torch.tensor([[101, 2054, 2003, 102]])}
+    def __call__(
+        self,
+        text: str | list[str],
+        return_tensors: str = "pt",
+        **kwargs: Any,
+    ) -> MockBatchEncoding:
+        b = len(text) if isinstance(text, list) else 1
+        input_ids = torch.tensor([[101, 2054, 2003, 102]] * b)
+        attention_mask = torch.ones_like(input_ids)
+        return MockBatchEncoding({"input_ids": input_ids, "attention_mask": attention_mask})
 
 
 def test_transformer_activation_encoder_interface() -> None:
@@ -81,3 +102,25 @@ def test_transformer_activation_encoder_encode_text() -> None:
     last_hidden, hidden_states = encoder.encode_text("Evaluate this prompt.")
     assert last_hidden.shape == (1, 4, 48)
     assert len(hidden_states) == 2
+
+
+def test_prefill_activation_extractor_with_encoder() -> None:
+    """Verify PrefillActivationExtractor can share an existing TransformerActivationEncoder."""
+    model = MockTransformerModel(hidden_dim=32, num_layers=4)
+    tokenizer = MockTokenizer()
+    encoder = TransformerActivationEncoder(model=model, tokenizer=tokenizer, device="cpu")
+
+    extractor = PrefillActivationExtractor(encoder=encoder, cache_file=None)
+    assert extractor._model is model
+    assert extractor._tokenizer is tokenizer
+    assert extractor.device == "cpu"
+
+    # Single prompt extraction
+    single_act = extractor.extract_one("Test prompt")
+    assert isinstance(single_act, np.ndarray)
+    assert single_act.shape == (32,)
+
+    # Batch prompt extraction
+    batch_acts = extractor.extract_batch(["Prompt 1", "Prompt 2", "Prompt 3"])
+    assert isinstance(batch_acts, np.ndarray)
+    assert batch_acts.shape == (3, 32)

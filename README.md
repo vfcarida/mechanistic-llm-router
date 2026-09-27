@@ -140,7 +140,7 @@ if __name__ == "__main__":
 Every pull request and commit is validated against rigorous offline testing and quality gates:
 
 ```bash
-# Run complete test suite (97 passed, 100% pass rate)
+# Run complete test suite (103 passed, 100% pass rate)
 pytest
 
 # Static type analysis across all 42 source files
@@ -151,7 +151,7 @@ ruff check .
 ruff format --check .
 ```
 
-- **Pytest Suite**: **97 passed, 0 failures (100% pass rate)**.
+- **Pytest Suite**: **103 passed, 0 failures (100% pass rate)**.
 - **Label Leakage Protection**: Source-tree AST scans enforce zero caller-supplied ground-truth label leakage into `RoutingRequest`.
 - **Concurrency Isolation**: Verified per-key locking under simultaneous `asyncio.gather` execution.
 - **Ruff & MyPy**: 0 lint errors, 0 type errors across all modules.

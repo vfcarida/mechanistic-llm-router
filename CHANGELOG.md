@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Property-based invariant test suite (`test_compute_convex_hull_property_invariants`) in `tests/test_signals.py` asserting strict cost monotonicity, non-decreasing accuracy, and convex slope diminution across 100 randomized topological distributions.
+- Application factory function `create_app(config: RouterConfig = DEFAULT_CONFIG) -> FastAPI` and modular `APIRouter` in `mechanistic_router.gateway.server`, enabling isolated gateway instances with custom configurations for production and multi-tenant testing.
+- Configurable `rate_limit_capacity` and `rate_limit_refill_rate` fields on `RouterConfig` supporting environment variable overrides (`ROUTER_RATE_LIMIT_CAPACITY`, `ROUTER_RATE_LIMIT_REFILL_RATE`).
+- Integrated `encoder: TransformerActivationEncoder | None = None` parameter into `PrefillActivationExtractor`, enabling seamless sharing of preloaded transformer model backends in memory.
+- Unit test `test_prefill_activation_extractor_with_encoder` in `tests/test_transformer_activation_encoder.py` and factory state isolation test `test_gateway_app_factory_isolation` in `tests/test_gateway.py`.
 - Added concurrent rate limiter testing via `asyncio.gather` in `tests/test_gateway_limits.py` verifying capacity limits and cross-key concurrency isolation.
 - Added comprehensive boundary and edge-case unit tests in `tests/test_sae_engine.py` covering all-zero activations, single-feature activations, 1D tensor inputs, and `threshold=0.0`.
 - Dedicated API reference documentation: `docs/reference/config.md` (RouterConfig and env vars), `docs/reference/routers.md` (strategy contracts), and `docs/reference/gateway.md` (FastAPI REST endpoints and headers).

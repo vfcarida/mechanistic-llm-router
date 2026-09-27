@@ -42,6 +42,12 @@ class RouterConfig(BaseSettings):
     similarity_threshold: float = Field(
         default=0.85, description="Cosine similarity threshold for semantic matching."
     )
+    rate_limit_capacity: float = Field(
+        default=10.0, description="Token bucket burst capacity per client key."
+    )
+    rate_limit_refill_rate: float = Field(
+        default=5.0, description="Token refill rate per second per client key."
+    )
 
     model_config = SettingsConfigDict(
         env_prefix="ROUTER_",

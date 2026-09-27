@@ -268,3 +268,30 @@ def test_gateway_multi_turn_conversation(mock_acompletion: AsyncMock) -> None:
     assert response.status_code == 200
     data = response.json()
     assert data["choices"][0]["message"]["content"] == "Multi-turn assistant answer"
+
+
+def test_gateway_app_factory_isolation() -> None:
+    """Ensure create_app creates independent FastAPI instances with isolated states."""
+    from mechanistic_router.config import RouterConfig
+    from mechanistic_router.gateway.server import create_app
+
+    config_a = RouterConfig(rate_limit_capacity=7.0, rate_limit_refill_rate=1.0)
+    config_b = RouterConfig(rate_limit_capacity=42.0, rate_limit_refill_rate=10.0)
+
+    app_a = create_app(config_a)
+    app_b = create_app(config_b)
+
+    assert app_a is not app_b
+    assert app_a.state.config.rate_limit_capacity == 7.0
+    assert app_b.state.config.rate_limit_capacity == 42.0
+    assert app_a.state.rate_limiter.capacity == 7.0
+    assert app_b.state.rate_limiter.capacity == 42.0
+
+    # Ensure each instance routes independently
+    client_a = TestClient(app_a)
+    client_b = TestClient(app_b)
+
+    res_a = client_a.get("/health")
+    res_b = client_b.get("/healthz")
+    assert res_a.status_code == 200
+    assert res_b.status_code == 200

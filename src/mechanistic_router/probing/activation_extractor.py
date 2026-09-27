@@ -5,10 +5,13 @@ from __future__ import annotations
 import hashlib
 import logging
 from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 import torch
+
+if TYPE_CHECKING:
+    from .base import TransformerActivationEncoder
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +27,7 @@ class PrefillActivationExtractor:
         device: str = "cpu",
         local_files_only: bool = True,
         cache_file: str | None = ".cache/activations/smollm_activations.npz",
+        encoder: TransformerActivationEncoder | None = None,
     ) -> None:
         self.model_name = model_name
         self.layer_idx = layer_idx
@@ -35,6 +39,11 @@ class PrefillActivationExtractor:
         self._tokenizer: Any = None
         self._model: Any = None
         self._cache: dict[str, np.ndarray] = {}
+
+        if encoder is not None:
+            self._model = encoder.model
+            self._tokenizer = encoder.tokenizer
+            self.device = str(encoder.device)
 
         if self.cache_file and self.cache_file.exists():
             try:

@@ -9,10 +9,19 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    FastAPI,
+    Header,
+    HTTPException,
+    Request,
+    Response,
+    status,
+)
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from ..config import DEFAULT_CONFIG
+from ..config import DEFAULT_CONFIG, RouterConfig
 from ..core.encoder import SharedTrunkEncoder
 from ..models.pool import MODEL_POOL
 from ..models.types import TargetModel
@@ -135,38 +144,12 @@ semantic_router = SemanticRouter(MODEL_POOL, DEFAULT_CONFIG)
 cost_performance_router = CostPerformanceRouter(MODEL_POOL, DEFAULT_CONFIG)
 dispatcher = LiteLLMDispatcher()
 metrics = RouterMetrics()
-rate_limiter = TokenBucketRateLimiter()
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Lifecycle manager to initialize OpenTelemetry prometheus exporter metrics."""
-    app.state.encoder = SharedTrunkEncoder(DEFAULT_CONFIG)
-    app.state.router = MechanisticRouter(app.state.encoder, MODEL_POOL, DEFAULT_CONFIG)
-    app.state.semantic_router = SemanticRouter(MODEL_POOL, DEFAULT_CONFIG)
-    app.state.cost_performance_router = CostPerformanceRouter(MODEL_POOL, DEFAULT_CONFIG)
-    app.state.dispatcher = LiteLLMDispatcher()
-    app.state.metrics = RouterMetrics()
-    app.state.rate_limiter = TokenBucketRateLimiter()
-    app.state.metrics.start_exporter()
-    yield
-
-
-app = FastAPI(
-    title="Mechanistic LLM Router Gateway",
-    description="Drop-in OpenAI-compatible Gateway performing ultra-low latency routing.",
-    version="0.1.0",
-    lifespan=lifespan,
+rate_limiter = TokenBucketRateLimiter(
+    capacity=DEFAULT_CONFIG.rate_limit_capacity,
+    refill_rate=DEFAULT_CONFIG.rate_limit_refill_rate,
 )
 
-# Populate initial default app state
-app.state.encoder = encoder
-app.state.router = router
-app.state.semantic_router = semantic_router
-app.state.cost_performance_router = cost_performance_router
-app.state.dispatcher = dispatcher
-app.state.metrics = metrics
-app.state.rate_limiter = rate_limiter
+api_router = APIRouter()
 
 
 # FastAPI Dependency Providers
@@ -200,7 +183,6 @@ def get_metrics(request: Request) -> RouterMetrics:
     return getattr(request.app.state, "metrics", metrics)
 
 
-@app.exception_handler(ProviderDispatchError)
 async def provider_dispatch_error_handler(
     request: Request, exc: ProviderDispatchError
 ) -> JSONResponse:
@@ -218,7 +200,6 @@ async def provider_dispatch_error_handler(
     )
 
 
-@app.exception_handler(HTTPException)
 async def custom_http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
     """Formats HTTPException into standard OpenAI-compatible top-level error dict."""
     if isinstance(exc.detail, dict) and "error" in exc.detail:
@@ -300,14 +281,14 @@ async def verify_auth_and_rate_limit(
     return provided_key
 
 
-@app.get("/health")
-@app.get("/healthz")
+@api_router.get("/health")
+@api_router.get("/healthz")
 async def healthz() -> dict[str, str]:
     """Health check status endpoint."""
     return {"status": "ok", "service": "mechanistic-llm-router-gateway"}
 
 
-@app.get("/v1/models")
+@api_router.get("/v1/models")
 async def list_models() -> dict[str, Any]:
     """OpenAI-compatible models list endpoint."""
     model_list = [
@@ -321,7 +302,7 @@ async def list_models() -> dict[str, Any]:
     return {"object": "list", "data": model_list}
 
 
-@app.post("/v1/chat/completions", response_model=ChatCompletionResponse)
+@api_router.post("/v1/chat/completions", response_model=ChatCompletionResponse)
 async def chat_completions(
     request: ChatCompletionRequest,
     response_http: Response,
@@ -429,8 +410,75 @@ async def chat_completions(
     return response
 
 
+def create_app(config: RouterConfig = DEFAULT_CONFIG) -> FastAPI:
+    """Factory function creating a configured FastAPI gateway instance."""
+
+    @asynccontextmanager
+    async def app_lifespan(app_inst: FastAPI) -> AsyncGenerator[None, None]:
+        """Lifecycle manager to initialize OpenTelemetry prometheus exporter metrics."""
+        app_inst.state.config = config
+        app_inst.state.encoder = SharedTrunkEncoder(config)
+        app_inst.state.router = MechanisticRouter(app_inst.state.encoder, MODEL_POOL, config)
+        app_inst.state.semantic_router = SemanticRouter(MODEL_POOL, config)
+        app_inst.state.cost_performance_router = CostPerformanceRouter(MODEL_POOL, config)
+        app_inst.state.dispatcher = LiteLLMDispatcher()
+        app_inst.state.metrics = RouterMetrics()
+        app_inst.state.rate_limiter = TokenBucketRateLimiter(
+            capacity=config.rate_limit_capacity,
+            refill_rate=config.rate_limit_refill_rate,
+        )
+        app_inst.state.metrics.start_exporter()
+        yield
+
+    app_instance = FastAPI(
+        title="Mechanistic LLM Router Gateway",
+        description="Drop-in OpenAI-compatible Gateway performing ultra-low latency routing.",
+        version="0.1.0",
+        lifespan=app_lifespan,
+    )
+
+    app_instance.add_exception_handler(ProviderDispatchError, provider_dispatch_error_handler)  # type: ignore[arg-type]
+    app_instance.add_exception_handler(HTTPException, custom_http_exception_handler)  # type: ignore[arg-type]
+
+    app_instance.include_router(api_router)
+
+    # Populate initial default app state
+    app_instance.state.config = config
+    app_instance.state.encoder = encoder if config is DEFAULT_CONFIG else SharedTrunkEncoder(config)
+    app_instance.state.router = (
+        router
+        if config is DEFAULT_CONFIG
+        else MechanisticRouter(app_instance.state.encoder, MODEL_POOL, config)
+    )
+    app_instance.state.semantic_router = (
+        semantic_router if config is DEFAULT_CONFIG else SemanticRouter(MODEL_POOL, config)
+    )
+    app_instance.state.cost_performance_router = (
+        cost_performance_router
+        if config is DEFAULT_CONFIG
+        else CostPerformanceRouter(MODEL_POOL, config)
+    )
+    app_instance.state.dispatcher = dispatcher
+    app_instance.state.metrics = metrics
+    app_instance.state.rate_limiter = (
+        rate_limiter
+        if config is DEFAULT_CONFIG
+        else TokenBucketRateLimiter(
+            capacity=config.rate_limit_capacity,
+            refill_rate=config.rate_limit_refill_rate,
+        )
+    )
+
+    return app_instance
+
+
+app = create_app()
+
+
 __all__ = [
     "app",
+    "create_app",
+    "api_router",
     "router",
     "semantic_router",
     "cost_performance_router",
