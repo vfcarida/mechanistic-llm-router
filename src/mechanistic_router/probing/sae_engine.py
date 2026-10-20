@@ -21,6 +21,7 @@ class SAEEngine(nn.Module):
         l1_coefficient: float = 0.001,
         top_k: int | None = None,
         circuit_feature_map: dict[str, list[int]] | None = None,
+        seed: int | None = None,
     ):
         """Initializes SAE encoder-decoder architecture parameters.
 
@@ -30,6 +31,7 @@ class SAEEngine(nn.Module):
             l1_coefficient: L1 regularization penalty strength.
             top_k: Optional Top-K sparsity parameter (Gao et al. 2024).
             circuit_feature_map: Optional mapping of circuit types to feature index lists.
+            seed: Optional random seed for deterministic weight initialization.
         """
         super().__init__()
         self.d_in = d_in
@@ -38,9 +40,18 @@ class SAEEngine(nn.Module):
         self.top_k = top_k
         self.circuit_feature_map = circuit_feature_map
 
-        self.W_enc = nn.Parameter(torch.randn(d_in, d_sae) * 0.02)
+        if seed is not None:
+            rng = torch.Generator()
+            rng.manual_seed(seed)
+            w_enc_init = torch.randn(d_in, d_sae, generator=rng) * 0.02
+            w_dec_init = torch.randn(d_sae, d_in, generator=rng) * 0.02
+        else:
+            w_enc_init = torch.randn(d_in, d_sae) * 0.02
+            w_dec_init = torch.randn(d_sae, d_in) * 0.02
+
+        self.W_enc = nn.Parameter(w_enc_init)
         self.b_enc = nn.Parameter(torch.zeros(d_sae))
-        self.W_dec = nn.Parameter(torch.randn(d_sae, d_in) * 0.02)
+        self.W_dec = nn.Parameter(w_dec_init)
         self.b_dec = nn.Parameter(torch.zeros(d_in))
 
     def encode(self, x: torch.Tensor) -> torch.Tensor:

@@ -1,4 +1,4 @@
-"""Leakage Isolation Verification Suite (MLR-T03).
+"""Leakage Isolation Verification Suite.
 
 Asserts that:
 1. RoutingRequest schema has no task_complexity field.
@@ -53,7 +53,7 @@ async def test_routing_purity_and_metadata_isolation() -> None:
     encoder = SharedTrunkEncoder(DEFAULT_CONFIG)
     router = MechanisticRouter(encoder, MODEL_POOL, DEFAULT_CONFIG)
 
-    prompt = "Qual o valor da minha fatura de cartão?"
+    prompt = "What is my credit card statement balance?"
 
     # Case A: EvalCase tagged as ROUTINE
     case_a = EvalCase(

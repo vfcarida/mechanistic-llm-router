@@ -33,9 +33,11 @@ async def main():
     print(f"Selected Model: {decision.selected_model}")
     print(f"Strategy Used:  {decision.strategy_used}")
     print(f"Estimated Cost: ${decision.estimated_cost_usd:.6f}")
-    if decision.probing_signals:
-        print(f"Avg d_eff:      {decision.probing_signals.effective_dimensionality:.3f}")
-        print(f"Fisher Score:   {decision.probing_signals.fisher_separability:.3f}")
+    if decision.selected_model in decision.signals:
+        sig = decision.signals[decision.selected_model]
+        print(f"Avg d_eff:      {sig.d_eff_mean:.3f}")
+        print(f"Fisher Score:   {sig.fisher_j:.3f}")
+        print(f"SAE Features:   {sig.sae_features}")
 
 
 if __name__ == "__main__":

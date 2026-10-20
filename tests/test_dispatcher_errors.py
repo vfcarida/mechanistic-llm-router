@@ -1,4 +1,4 @@
-"""Verification tests for provider error propagation and zero fabricated responses (MLR-T04)."""
+"""Verification tests for provider error propagation and zero fabricated responses."""
 
 from unittest.mock import AsyncMock, patch
 
@@ -38,7 +38,7 @@ def test_gateway_endpoint_returns_502_without_fabricated_content(
     """Ensure gateway returns HTTP 502 on failure and does NOT synthesize assistant message."""
     payload = {
         "model": "mechanistic-auto",
-        "messages": [{"role": "user", "content": "Consultar limite disponível."}],
+        "messages": [{"role": "user", "content": "Check available credit limit."}],
     }
     response = client.post(
         "/v1/chat/completions",
@@ -61,7 +61,7 @@ def test_gateway_endpoint_rejects_invalid_key_before_dispatch() -> None:
     """Ensure requests with invalid credentials receive 401 without dispatching or fallbacks."""
     payload = {
         "model": "mechanistic-auto",
-        "messages": [{"role": "user", "content": "Consulta teste"}],
+        "messages": [{"role": "user", "content": "Test inquiry"}],
     }
     response = client.post(
         "/v1/chat/completions",

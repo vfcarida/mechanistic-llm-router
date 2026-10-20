@@ -1,4 +1,4 @@
-"""Verification tests for dynamic cost savings calculation (MLR-T04 / MLR-F10)."""
+"""Verification tests for dynamic cost savings calculation."""
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -74,7 +74,7 @@ def test_gateway_chat_completions_reports_dynamic_cost_savings(
     mock_response = MagicMock()
     mock_response.id = "chatcmpl-cost-test"
     mock_choice = MagicMock()
-    mock_choice.message.content = "Saldo disponível: R$ 500,00"
+    mock_choice.message.content = "Available balance: $500.00"
     mock_response.choices = [mock_choice]
     mock_response.usage = MagicMock(prompt_tokens=8, completion_tokens=10, total_tokens=18)
     mock_acompletion.return_value = mock_response
@@ -82,7 +82,7 @@ def test_gateway_chat_completions_reports_dynamic_cost_savings(
     # Prompt routed to SLM-BERTau-Local (cost $0.02)
     payload = {
         "model": "mechanistic-auto",
-        "messages": [{"role": "user", "content": "Qual meu saldo atual?"}],
+        "messages": [{"role": "user", "content": "What is my current balance?"}],
     }
     response = client.post(
         "/v1/chat/completions",

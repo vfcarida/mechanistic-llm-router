@@ -64,7 +64,7 @@ def split_dataset_prompt_disjoint(
 def create_financial_dataset(n_samples: int = 200, seed: int = 42) -> list[EvalCase]:
     """Generate a synthetic financial evaluation dataset emitting EvalCase instances.
 
-    Prompts maintain an illustrative synthetic banking domain (24 prompts across 6 categories).
+    Prompts cover an enterprise banking domain across 6 categories and 3 complexity tiers.
     Complexity labels are assigned exclusively as `reference_tier` for post-routing
     evaluation, and are never supplied to models during runtime routing.
 
@@ -77,90 +77,90 @@ def create_financial_dataset(n_samples: int = 200, seed: int = 42) -> list[EvalC
             price table, and ground-truth reference_tier.
     """
     categories_and_prompts: dict[str, list[tuple[str, TaskComplexity]]] = {
-        "consulta_fatura": [
+        "statement_inquiry": [
             (
-                "Qual o valor da minha fatura do cartão de crédito este mês?",
+                "What is my credit card statement balance this month?",
                 TaskComplexity.ROUTINE,
             ),
             (
-                "Gostaria de ver o detalhamento das últimas transações da fatura.",
+                "Show my recent credit card statement transactions.",
                 TaskComplexity.ROUTINE,
             ),
             (
-                "Minha fatura veio com um valor que não reconheço. Pode verificar?",
+                "My statement has an unrecognized charge. Can you verify?",
                 TaskComplexity.MODERATE,
             ),
             (
-                "Preciso entender por que os juros rotativos foram aplicados na minha "
-                "fatura dos últimos 3 meses e como isso impacta meu CET.",
+                "Explain why revolving compound interest was applied to my statement "
+                "over the last three months and how it impacts my APR.",
                 TaskComplexity.COMPLEX,
             ),
         ],
-        "renegociacao": [
-            ("Quero renegociar minha dívida do cartão.", TaskComplexity.ROUTINE),
+        "debt_restructuring": [
+            ("I want to renegotiate my card balance.", TaskComplexity.ROUTINE),
             (
-                "Quais as opções de parcelamento para minha dívida de R$5.000?",
+                "What are the installment options for my $5,000 debt?",
                 TaskComplexity.MODERATE,
             ),
             (
-                "Considerando meu histórico de pagamentos, score e renda, qual seria a "
-                "melhor estratégia de renegociação para minimizar juros compostos no longo prazo?",
+                "Given my payment history, credit score, and income, what is the "
+                "optimal debt restructuring strategy to minimize compound interest long term?",
                 TaskComplexity.COMPLEX,
             ),
             (
-                "Tenho três dívidas em atraso. Qual a prioridade de pagamento considerando "
-                "taxas de juros compostos e impacto no meu score Serasa?",
-                TaskComplexity.COMPLEX,
-            ),
-        ],
-        "analise_credito": [
-            ("Qual meu limite de crédito disponível?", TaskComplexity.ROUTINE),
-            (
-                "Quero solicitar aumento de limite. Qual minha elegibilidade?",
-                TaskComplexity.MODERATE,
-            ),
-            (
-                "Preciso de uma análise completa do meu perfil de crédito considerando DTI, "
-                "LTV, histórico de utilização de crédito rotativo e projeção de capacidade "
-                "de pagamento para os próximos 12 meses.",
+                "I have three overdue balances. What is the payment priority considering "
+                "compound interest rates and credit bureau score impact?",
                 TaskComplexity.COMPLEX,
             ),
         ],
-        "investimentos": [
-            ("Quais os CDBs disponíveis hoje?", TaskComplexity.ROUTINE),
+        "credit_analysis": [
+            ("What is my available credit limit?", TaskComplexity.ROUTINE),
             (
-                "Qual a diferença entre CDB pré e pós-fixado para meu perfil?",
+                "I want to request a credit limit increase. What is my eligibility?",
                 TaskComplexity.MODERATE,
             ),
             (
-                "Monte uma estratégia de diversificação considerando meu perfil de risco "
-                "moderado, horizonte de 5 anos, exposição atual em renda fixa e correlação "
-                "entre classes de ativos no cenário macroeconômico atual.",
+                "Provide a comprehensive analysis of my credit profile considering DTI, "
+                "LTV, revolving utilization history, and 12-month cash flow projection.",
                 TaskComplexity.COMPLEX,
             ),
         ],
-        "pix_transferencias": [
-            ("Quero fazer um Pix de R$100 para fulano.", TaskComplexity.ROUTINE),
+        "investments": [
+            ("Which fixed-income certificates are available today?", TaskComplexity.ROUTINE),
             (
-                "Houve uma transferência Pix que não reconheço. Pode verificar?",
+                "What is the difference between fixed and floating rate "
+                "certificates for my profile?",
                 TaskComplexity.MODERATE,
             ),
             (
-                "Preciso configurar uma política automatizada de Pix agendado com regras "
-                "condicionais baseadas no saldo mínimo e projeções de fluxo de caixa.",
+                "Build a portfolio diversification strategy considering my moderate risk "
+                "profile, 5-year horizon, fixed-income exposure, and asset correlation "
+                "under current macroeconomic conditions.",
                 TaskComplexity.COMPLEX,
             ),
         ],
-        "seguros": [
-            ("Quais seguros eu tenho contratados?", TaskComplexity.ROUTINE),
+        "instant_transfers": [
+            ("Send a $100 instant transfer to John.", TaskComplexity.ROUTINE),
             (
-                "Qual a cobertura do meu seguro residencial para danos elétricos?",
+                "There is an instant transfer I do not recognize. Can you verify?",
                 TaskComplexity.MODERATE,
             ),
             (
-                "Compare a relação custo-benefício entre minha apólice atual e três "
-                "alternativas de mercado, considerando sinistralidade esperada, carência, "
-                "franquia e minha exposição a riscos com base no CEP e perfil de uso.",
+                "Configure an automated scheduled transfer policy with conditional rules "
+                "based on minimum balance thresholds and cash flow projections.",
+                TaskComplexity.COMPLEX,
+            ),
+        ],
+        "insurance": [
+            ("Which insurance policies do I currently hold?", TaskComplexity.ROUTINE),
+            (
+                "What is the home insurance coverage for electrical damage?",
+                TaskComplexity.MODERATE,
+            ),
+            (
+                "Compare the cost-benefit ratio between my current insurance policy and "
+                "three market alternatives, considering expected loss ratio, deductible, "
+                "and regional risk exposure.",
                 TaskComplexity.COMPLEX,
             ),
         ],
@@ -215,7 +215,7 @@ def create_financial_dataset(n_samples: int = 200, seed: int = 42) -> list[EvalC
 
 
 def load_synthetic_eval_dataset(n_samples: int = 300, seed: int = 42) -> list[EvalCase]:
-    """Generates synthetic benchmark evaluation cases based on financial BERTaú-domain scenarios.
+    """Generates synthetic benchmark evaluation cases based on enterprise financial scenarios.
 
     Args:
         n_samples: Total number of sampled evaluation records.

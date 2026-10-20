@@ -12,6 +12,16 @@ from .baselines import (
     RandomPolicy,
     SemanticPolicy,
 )
+from .calibration_pack import (
+    DEFAULT_CHECKPOINT_DIR,
+    DEFAULT_CONFORMAL_CHECKPOINT,
+    DEFAULT_PROBE_CHECKPOINT,
+    MULTIDOMAIN_BENCHMARK_CORPUS,
+    DeterministicMultiLayerExtractor,
+    build_and_save_calibration_pack,
+    load_calibrated_causal_router,
+    load_multidomain_calibration_dataset,
+)
 from .dataset import (
     load_routerbench_eval_dataset,
     load_synthetic_eval_dataset,
@@ -29,6 +39,11 @@ from .metrics import (
     compute_pareto_auc,
     compute_pareto_front,
 )
+from .off_policy_evaluator import (
+    DoublyRobustPolicyEvaluator,
+    LoggedRoutingSample,
+    OffPolicyEvaluationResult,
+)
 
 __all__ = [
     "BasePolicy",
@@ -41,6 +56,14 @@ __all__ = [
     "CostPerformancePolicy",
     "SemanticPolicy",
     "CausalProbePolicy",
+    "DEFAULT_CHECKPOINT_DIR",
+    "DEFAULT_PROBE_CHECKPOINT",
+    "DEFAULT_CONFORMAL_CHECKPOINT",
+    "MULTIDOMAIN_BENCHMARK_CORPUS",
+    "DeterministicMultiLayerExtractor",
+    "load_multidomain_calibration_dataset",
+    "build_and_save_calibration_pack",
+    "load_calibrated_causal_router",
     "split_dataset_prompt_disjoint",
     "load_synthetic_eval_dataset",
     "load_routerbench_eval_dataset",
@@ -52,4 +75,7 @@ __all__ = [
     "PolicyEvaluationResult",
     "BenchmarkExecutionSummary",
     "BenchmarkHarness",
+    "DoublyRobustPolicyEvaluator",
+    "LoggedRoutingSample",
+    "OffPolicyEvaluationResult",
 ]

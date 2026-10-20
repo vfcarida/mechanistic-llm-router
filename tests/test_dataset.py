@@ -43,9 +43,9 @@ def test_create_financial_dataset_distribution() -> None:
 
 def test_mock_dataset_deprecation_warning() -> None:
     """Test that importing mechanistic_router.data.mock_dataset emits DeprecationWarning."""
-    import mechanistic_router.data.mock_dataset as deprecated_mock_dataset
-
     with pytest.deprecated_call():
+        import mechanistic_router.data.mock_dataset as deprecated_mock_dataset
+
         importlib.reload(deprecated_mock_dataset)
 
 

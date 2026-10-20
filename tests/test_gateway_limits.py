@@ -58,7 +58,7 @@ def test_x_api_key_header_accepted() -> None:
 
         payload = {
             "model": "mechanistic-auto",
-            "messages": [{"role": "user", "content": "Saldo da conta"}],
+            "messages": [{"role": "user", "content": "Account balance"}],
         }
         response = client.post(
             "/v1/chat/completions",

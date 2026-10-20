@@ -1,69 +1,71 @@
 # System Architecture Specification
 
-> [!WARNING]
-> **Status: Research/demo artifact.** The router is currently heuristic and simulated: activation quantities (`d_eff`, Fisher J, SAE features) are computed for illustration and do not causally drive routing (see findings in [`BASELINE.md`](BASELINE.md)). Performance numbers in associated materials are modeled artifacts of a hand-assigned label distribution and a fictional price table, not measured outcomes.
+> [!NOTE]
+> **Architecture Dual-Track Design:** `mechanistic-llm-router` implements two strictly zero-leakage routing tracks: (1) **`CausalProbeRouter`**, which extracts real residual-stream activations (`SmolLM-135M`), classifies difficulty via `LinearActivationProbe`, validates directional necessity via `CausalAblationHarness`, and calibrates multi-tier thresholds via `ConformalRiskController`; and (2) **`MechanisticRouter` (`SimulatedRouter`)**, which computes SVD Effective Dimensionality ($d_{\text{eff}}$), simulated Fisher Discriminant separability ($J$), and Top-K Sparse Autoencoder (`SAEEngine`) feature circuits.
 
 ---
 
 ## Overview
 
-The Mechanistic LLM Router explores a theoretical two-stage **Encoder-Target Decoupling** framework designed to study whether prefill activation inspection can allocate queries across candidate models without invoking expensive frontier models prematurely.
-
-In the current prototype codebase, routing decisions are driven by simulated complexity heuristics and hand-assigned labels (`TaskComplexity`) rather than causal latent activation probing. The activation quantities ($d_{eff}$, Fisher $J$, SAE circuits) are computed in parallel to demonstrate mathematical feasibility and pipeline integration.
+The **Mechanistic LLM Router** implements a two-stage **Encoder-Target Decoupling** framework that inspects prefill representations to allocate queries across multi-tier candidate models (`SLM-BERTau-Local`, `LLM-Mid-Tier`, `LLM-Frontier-Oracle`) without ground-truth label leakage.
 
 ```mermaid
 graph TD
-    A[User Prompt Query] --> B[SharedTrunk Encoder / Prefill Stage]
-    B --> C[TransformerLens / Hook Manager]
+    A["User Prompt Query (RoutingRequest)"] --> B{"Routing Strategy"}
 
-    subgraph Probing Engine (Simulated / Illustrative)
-        C --> D["Effective Dimensionality (d_eff)<br>SVD & Shannon Entropy over [seq_len, hidden_dim]"]
-        C --> E["Fisher Separability (J)<br>Intra/Inter-Class Variance (Simulated)"]
-        C --> F["SAE Engine (SAELens)<br>Cognitive Circuit Extraction"]
+    subgraph "Track 1: Empirical Causal Probe & Conformal Cascade"
+        B -->|"CausalProbeRouter"| C1["PrefillActivationExtractor (SmolLM-135M)"]
+        C1 --> C2["LinearActivationProbe (w·h + b)"]
+        C2 --> C3["CausalAblationHarness (Orthogonal Projection Validation)"]
+        C2 --> C4["ConformalRiskController (Finite-Sample α Bound & H_2(p) Abstention)"]
     end
 
-    D -.-> G{Routing Strategy Decision}
-    E -.-> G
-    F -.-> G
-    LBL["TaskComplexity Label (Cheating Input)"] ==> G
-
-    subgraph Strategy Pattern Routers
-        G --> H[CostPerformanceRouter]
-        G --> I[SemanticRouter]
-        G --> J[MechanisticRouter]
+    subgraph "Track 2: Spectral & SAE Topological Probing"
+        B -->|"MechanisticRouter"| D1["SharedTrunkEncoder / TransformerActivationEncoder"]
+        D1 --> D2["Effective Dimensionality (d_eff via SVD Entropy)"]
+        D1 --> D3["Fisher Separability Gate (J)"]
+        D1 --> D4["SAEEngine (Top-K Sparse Autoencoder Circuits)"]
     end
 
-    J --> K[LiteLLM Universal Dispatcher]
+    C4 --> G["Multi-Tier Model Selection"]
+    D2 --> G
+    D3 --> G
+    D4 --> G
 
-    subgraph Model Candidate Pool (Fictional Constants)
-        K --> L((SLM Local - $0.02))
-        K --> M((Mid-Tier LLM - $0.25))
-        K --> N((Frontier Oracle - $1.50))
+    G --> K["LiteLLM Universal Dispatcher"]
+
+    subgraph "Target Model Pool"
+        K --> L(("SLM Local - $0.02"))
+        K --> M(("Mid-Tier LLM - $0.25"))
+        K --> N(("Frontier Oracle - $1.50"))
     end
 ```
 
 ---
 
-## Mathematical Formulations (Theoretical Basis)
+## Mathematical Formulations
 
-The mathematical implementations in `src/mechanistic_router/signals/math_utils.py` provide reference formulas for interpretability-based routing:
+### 1. Finite-Sample Conformal Risk Control (`src/mechanistic_router/probing/conformal.py`)
+Given $n$ exchangeable calibration queries with complexity probabilities $p_i \in [0, 1]$ and bounded monotone quality losses $\ell_i(\lambda) \in [0, B]$ relative to the frontier oracle, `ConformalRiskController` selects the supremum threshold $\hat{\lambda}(\alpha)$ satisfying the finite-sample Conformal Risk Control bound (Angelopoulos et al., *ICLR 2024*):
+$$\frac{n}{n + 1} \hat{R}_n(\lambda) + \frac{B}{n + 1} \le \alpha, \quad \hat{R}_n(\lambda) = \frac{1}{n} \sum_{i=1}^n \ell_i(\lambda)$$
 
-### 1. Effective Dimensionality ($d_{eff}$)
+To guard against boundary ambiguity, normalized binary Shannon entropy quantifies epistemic uncertainty:
+$$H_2(p) = -\frac{p \ln p + (1 - p) \ln(1 - p)}{\ln 2} \in [0, 1]$$
+When $H_2(p) \ge u_{\max}$, the router abstains from the lower tier and escalates one tier toward the frontier oracle.
+
+### 2. Counterfactual Directional Ablation (`src/mechanistic_router/probing/causal_validator.py`)
+Given the unit direction vector $\hat{w} = w / \|w\|_2$ of a fitted `LinearActivationProbe`, directional ablation projects out $\hat{w}$ from test activations $X \in \mathbb{R}^{N \times D}$:
+$$X_{\text{ablated}} = X - (X \hat{w}) \hat{w}^\top$$
+The causal effect size compares accuracy degradation under $\hat{w}$ ablation against the mean degradation across $K=50$ random unit vectors $\hat{r}_k \in \mathbb{S}^{D-1}$ over $1,000$ paired bootstrap resamples.
+
+### 3. Effective Dimensionality ($d_{\text{eff}}$) (`src/mechanistic_router/signals/math_utils.py`)
 Calculates spectrum entropy over the singular value decomposition of unpooled token activation matrices $A \in \mathbb{R}^{S \times D}$:
-$$\sigma = \text{SVD}(A)$$
-$$E_i = \sigma_i^2 \quad \text{and} \quad p_i = \frac{E_i}{\sum_j E_j}$$
-$$H = -\sum_{i} p_i \ln(p_i)$$
-$$d_{eff} = \exp(H)$$
+$$\sigma = \text{SVD}(A), \quad E_i = \sigma_i^2, \quad p_i = \frac{E_i}{\sum_j E_j}$$
+$$H = -\sum_{i} p_i \ln(p_i) \implies d_{\text{eff}} = \exp(H)$$
 
-*Note:* In the current codebase, $d_{eff}$ is computed across prefill layers and logged, but does not autonomously gate model routing.
-
-### 2. Fisher Separability ($J$)
-Computes the Fisher linear discriminant ratio between class clusters in representation space:
+### 4. Fisher Separability ($J$) & Log-Scale Price Selection
+Computes the Fisher linear discriminant ratio between success and failure clusters in representation space:
 $$J = \frac{1}{D} \sum_{d=1}^{D} \frac{(\mu_{\text{success}, d} - \mu_{\text{failure}, d})^2}{\sigma^2_{\text{success}, d} + \sigma^2_{\text{failure}, d} + \epsilon}$$
 
-*Note:* In the current prototype, success and failure clusters are generated by injecting synthetic Gaussian noise around layer representations conditioned on whether the model's complexity ceiling covers the prompt's injected `TaskComplexity` ground-truth label. It does not measure true empirical failure distributions of target models.
-
-### 3. Log-Scale Price Selection
 Once candidate models pass the competence threshold, log-scale normalization balances unit query costs against capability scores:
-$$\text{LogScore} = \frac{\ln(\text{Cost}_{\text{max}} / \text{Cost}_i)}{\ln(\text{Cost}_{\text{max}} / \text{Cost}_{\text{min}})}$$
-$$\text{Score}_i = \lambda \cdot \text{LogScore}_i + (1 - \lambda) \cdot \text{AccNorm}_i$$
+$$\text{LogScore}_i = \frac{\ln(\text{Cost}_{\max} / \text{Cost}_i)}{\ln(\text{Cost}_{\max} / \text{Cost}_{\min})}, \quad \text{Score}_i = \lambda_{\text{eff}} \cdot \text{LogScore}_i + (1 - \lambda_{\text{eff}}) \cdot \text{AccNorm}_i$$

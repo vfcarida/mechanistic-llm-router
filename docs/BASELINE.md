@@ -1,21 +1,20 @@
-# Mechanistic LLM Router — Baseline & Preflight Record
+# Mechanistic LLM Router — Historical Baseline & Preflight Record
 
-- **Task ID**: MLR-T01
 - **Repository**: [mechanistic-llm-router](https://github.com/vfcarida/mechanistic-llm-router)
 - **Baseline Commit SHA**: `fdfc05c0c75ef8c6b50eda28fd5db2dadeb47bfb` (branch `main`)
 - **Execution Date**: 2026-09-18
 - **Operating System**: Windows 11 (NT 10.0.26200 amd64 / win32)
 - **Host Python**: Python 3.12.10 (`C:\Users\vinicius\AppData\Local\Programs\Python\Python312\python.exe`)
 - **Virtual Environment**: `.venv` (`c:\Users\vinicius\Documents\GeminiCodes\mechanistic-llm-router\.venv`)
-- **Companion File**: [SHARED-CONVENTIONS.md](file:///c:/Users/vinicius/Documents/GeminiCodes/mechanistic-llm-router/SHARED-CONVENTIONS.md)
-- **Execution Boundary Compliance**: Local `.venv` only, zero paid model API network calls, zero modifications to `src/`, no unapproved wheel downloads, no remote git pushing.
+- **Governance Reference**: [ROADMAP.md](../ROADMAP.md)
+- **Execution Scope**: Local `.venv` only, zero paid model API network calls, offline verification.
 
 ---
 
 ## 1. Environment & Dependency Inventory
 
 ### Host & Virtual Environment Provisioning
-To adhere to execution boundary 8 (*"Torch/large downloads require explicit approval; otherwise document as blocked"*), the disposable virtual environment `.venv` was initialized using `--system-site-packages` on top of Python 3.12.10:
+The virtual environment `.venv` was initialized using `--system-site-packages` on top of Python 3.12.10:
 ```powershell
 python -m venv --system-site-packages .venv
 .\.venv\Scripts\pip install --no-build-isolation --no-deps -e .
@@ -135,17 +134,17 @@ TOTAL                                                       675     38    94%
 
 ---
 
-## 4. Coverage Discrepancy Analysis (Finding MLR-F12)
+## 4. Historical Coverage Discrepancy Analysis
 
-Prior to this run, the repository contained a checked-in `.coverage` SQLite database (size 53,248 bytes) and README documentation claiming 98% coverage across 45 unit tests.
-Our executed baseline reveals:
-1. **Total Tests**: Exactly 27 unit and integration tests exist in `tests/`, not 45 tests.
+Prior to the v0.2.0 refactoring, the repository contained a checked-in `.coverage` SQLite database (size 53,248 bytes) and README documentation claiming 98% coverage across 45 unit tests.
+The initial baseline audit recorded:
+1. **Total Tests**: Exactly 27 unit and integration tests existed in `tests/`, not 45 tests.
 2. **Actual Coverage**: **94%** (675 statements, 38 missed), not 98%.
-3. **Execution Freshness**: The committed `.coverage` file was an artifact from a prior state or external run and did not match the checked-in test suite.
+3. **Execution Freshness**: The committed `.coverage` file was an artifact from a prior state and has since been removed from version control.
 
 ---
 
-## 5. Label Leakage Inventory (Finding MLR-F9)
+## 5. Historical Label Leakage Inventory (Resolved)
 
 The repository's routing architecture suffers from pervasive label leakage: `TaskComplexity` (ground truth label) is passed directly into the router's input parameters or used to synthetically fabricate competence activations and ceiling evaluations.
 

@@ -1,4 +1,4 @@
-"""Unit and Integration Tests for MLR-T05 Baseline Pareto Benchmark and Policies."""
+"""Unit and Integration Tests for Baseline Pareto Benchmark and Policies."""
 
 from unittest.mock import patch
 
@@ -95,7 +95,7 @@ def test_leakage_guard_policy_signatures() -> None:
         CausalProbePolicy(),
     ]
 
-    toy_prompt = "Qual meu saldo em conta corrente?"
+    toy_prompt = "What is my checking account balance?"
     for policy in policies:
         # Must execute with pure string prompt only
         model = policy.select_model(toy_prompt)

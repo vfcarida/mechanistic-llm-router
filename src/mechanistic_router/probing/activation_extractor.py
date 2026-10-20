@@ -1,4 +1,4 @@
-"""Extracts prefill activations from local open-weight models."""
+"""Extracts single-layer or multi-layer fused prefill activations from local open-weight models."""
 
 from __future__ import annotations
 
@@ -17,7 +17,11 @@ logger = logging.getLogger(__name__)
 
 
 class PrefillActivationExtractor:
-    """Extracts hidden-state residual stream representations from local open-weight models."""
+    """Extracts hidden-state residual stream representations from local open-weight models.
+
+    Supports both single-layer extraction (`layer_idx` / `target_layer`) and multi-layer
+    residual stream fusion (`layer_indices` with `layer_fusion="concat"` or `"mean"`).
+    """
 
     def __init__(
         self,
@@ -28,9 +32,17 @@ class PrefillActivationExtractor:
         local_files_only: bool = True,
         cache_file: str | None = ".cache/activations/smollm_activations.npz",
         encoder: TransformerActivationEncoder | None = None,
+        target_layer: int | None = None,
+        layer_indices: list[int] | None = None,
+        layer_fusion: Literal["concat", "mean"] = "concat",
     ) -> None:
+        if layer_fusion not in ("concat", "mean"):
+            raise ValueError(f"layer_fusion must be 'concat' or 'mean', got '{layer_fusion}'.")
+
         self.model_name = model_name
-        self.layer_idx = layer_idx
+        self.layer_idx = target_layer if target_layer is not None else layer_idx
+        self.layer_indices = list(layer_indices) if layer_indices is not None else None
+        self.layer_fusion: Literal["concat", "mean"] = layer_fusion
         self.pooling = pooling
         self.device = device
         self.local_files_only = local_files_only
@@ -52,6 +64,13 @@ class PrefillActivationExtractor:
                 logger.info(f"Loaded {len(self._cache)} cached activations from {self.cache_file}")
             except Exception as e:
                 logger.warning(f"Failed to load disk activation cache: {e}")
+
+    @property
+    def num_extracted_layers(self) -> int:
+        """Returns number of transformer layers extracted per forward pass."""
+        if self.layer_indices is not None and len(self.layer_indices) > 0:
+            return len(self.layer_indices)
+        return 1
 
     def _ensure_loaded(self) -> None:
         """Lazily loads the model and tokenizer onto the target device."""
@@ -82,10 +101,27 @@ class PrefillActivationExtractor:
         self._model.eval()
 
     def _hash_prompt(self, prompt: str) -> str:
-        return hashlib.sha256(prompt.encode("utf-8")).hexdigest()
+        if self.layer_indices is not None:
+            key = (
+                f"{prompt}|layers={self.layer_indices}"
+                f"|fusion={self.layer_fusion}|pool={self.pooling}"
+            )
+            return hashlib.sha256(key.encode()).hexdigest()
+        return hashlib.sha256(prompt.encode()).hexdigest()
+
+    def _pool_hidden_state(
+        self, hidden_states: torch.Tensor, attention_mask: torch.Tensor
+    ) -> torch.Tensor:
+        """Pools sequence token representations into a fixed-width batch matrix (B, D)."""
+        if self.pooling == "last":
+            seq_lengths = attention_mask.sum(dim=1) - 1
+            batch_idx = torch.arange(hidden_states.size(0), device=hidden_states.device)
+            return hidden_states[batch_idx, seq_lengths]
+        mask_expanded = attention_mask.unsqueeze(-1)
+        return (hidden_states * mask_expanded).sum(dim=1) / mask_expanded.sum(dim=1).clamp(min=1)
 
     def extract_one(self, prompt: str) -> np.ndarray:
-        """Extracts activation vector for a single prompt (shape: (hidden_dim,))."""
+        """Extracts activation vector for a single prompt (shape: (feature_dim,))."""
         prompt_hash = self._hash_prompt(prompt)
         if prompt_hash in self._cache:
             return self._cache[prompt_hash]
@@ -94,7 +130,7 @@ class PrefillActivationExtractor:
         return np.asarray(batch_activations[0])
 
     def extract_batch(self, prompts: list[str], batch_size: int = 16) -> np.ndarray:
-        """Extracts activation vectors for a batch of prompts (shape: (N, hidden_dim))."""
+        """Extracts activation vectors for a batch of prompts (shape: (N, feature_dim))."""
         self._ensure_loaded()
         assert self._tokenizer is not None and self._model is not None
 
@@ -110,6 +146,12 @@ class PrefillActivationExtractor:
 
         if not prompts_to_compute:
             return np.stack(results, axis=0)
+
+        active_layers = (
+            self.layer_indices
+            if (self.layer_indices is not None and len(self.layer_indices) > 0)
+            else [self.layer_idx]
+        )
 
         # Batch forward pass for uncached prompts
         for chunk_start in range(0, len(prompts_to_compute), batch_size):
@@ -127,22 +169,21 @@ class PrefillActivationExtractor:
 
             with torch.no_grad():
                 outputs = self._model(**inputs, output_hidden_states=True)
-                hidden_states = outputs.hidden_states[self.layer_idx]  # (B, T, D)
+                attention_mask = inputs["attention_mask"]
 
-                if self.pooling == "last":
-                    # Last non-padding token
-                    attention_mask = inputs["attention_mask"]
-                    seq_lengths = attention_mask.sum(dim=1) - 1
-                    batch_idx = torch.arange(hidden_states.size(0), device=self.device)
-                    pooled = hidden_states[batch_idx, seq_lengths]
+                pooled_layers: list[torch.Tensor] = [
+                    self._pool_hidden_state(outputs.hidden_states[idx], attention_mask)
+                    for idx in active_layers
+                ]
+
+                if len(pooled_layers) == 1:
+                    fused = pooled_layers[0]
+                elif self.layer_fusion == "concat":
+                    fused = torch.cat(pooled_layers, dim=-1)
                 else:
-                    # Masked mean pooling
-                    attention_mask = inputs["attention_mask"].unsqueeze(-1)
-                    pooled = (hidden_states * attention_mask).sum(dim=1) / attention_mask.sum(
-                        dim=1
-                    ).clamp(min=1)
+                    fused = torch.stack(pooled_layers, dim=0).mean(dim=0)
 
-                pooled_np = pooled.float().cpu().numpy().astype(np.float32)
+                pooled_np = fused.float().cpu().numpy().astype(np.float32)
 
             for local_i, global_idx in enumerate(chunk_indices):
                 vec = pooled_np[local_i]

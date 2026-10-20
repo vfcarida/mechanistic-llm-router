@@ -10,7 +10,9 @@ import torch
 from ..config import RouterConfig
 from ..models.pool import get_model_accuracy
 from ..models.types import TargetModel, TaskComplexity
+from ..probing.attention_probe import AttentionCircuitProbe
 from ..probing.base import AbstractEncoder
+from ..probing.sae_engine import SAEEngine
 from ..schemas.routing import ProbingSignals, RoutingDecision, RoutingRequest
 from ..signals.math_utils import compute_effective_dimensionality, compute_fisher_separability
 from ..utils.metrics import normalized_accuracy, normalized_inverse_cost
@@ -32,12 +34,37 @@ class MechanisticRouter(AbstractRouter):
         encoder: AbstractEncoder,
         model_pool: dict[str, TargetModel],
         config: RouterConfig,
+        sae_engine: SAEEngine | None = None,
+        attention_probe: AttentionCircuitProbe | None = None,
     ):
         super().__init__(model_pool, config)
         if not isinstance(encoder, AbstractEncoder):
             raise TypeError("encoder must be an instance of SharedTrunkEncoder or AbstractEncoder")
         self.encoder = encoder
         self.encoder.eval()
+
+        d_in = int(getattr(self.encoder, "hidden_dim", self.config.hidden_dim))
+        self.sae_engine = (
+            sae_engine
+            if sae_engine is not None
+            else SAEEngine(
+                d_in=d_in,
+                d_sae=d_in * 4,
+                top_k=8,
+                seed=self.config.seed,
+            )
+        )
+        self.sae_engine.eval()
+        num_heads = 4 if d_in % 4 == 0 else 1
+        self.attention_probe = (
+            attention_probe
+            if attention_probe is not None
+            else AttentionCircuitProbe(
+                hidden_dim=d_in,
+                num_heads=num_heads,
+                seed=self.config.seed,
+            )
+        )
 
         self.cost_min = min(m.cost for m in self.model_pool.values())
         self.cost_max = max(m.cost for m in self.model_pool.values())
@@ -120,6 +147,17 @@ class MechanisticRouter(AbstractRouter):
         d_eff_mean = float(np.mean(d_eff_values))
         complexity_signal = min(d_eff_mean / (self.config.hidden_dim * 0.5), 1.0)
 
+        # 2. Sparse Autoencoder (SAE) active circuit extraction on final prefill layer
+        sae_circuit_info = self.sae_engine.extract_active_circuits(
+            layer_activations[-1], threshold=0.0
+        )
+        active_sae_features: list[int] = list(sae_circuit_info["active_feature_indices"])
+
+        # 3. Attention-Head Routing Entropy & Induction Circuit Probing
+        attn_signals = self.attention_probe.analyze_hidden_states(
+            layer_activations[-1], token_ids=input_tensor.squeeze(0)
+        )
+
         signals: dict[str, ProbingSignals] = {}
         model_scores: dict[str, float] = {}
 
@@ -143,12 +181,18 @@ class MechanisticRouter(AbstractRouter):
                 fisher_j=fisher_j,
                 fisher_j_norm=fisher_j_norm,
                 is_competent=is_competent,
-                sae_features=[42, 108] if estimated_complexity == TaskComplexity.COMPLEX else [7],
+                sae_features=active_sae_features,
                 extra_metadata={
                     "inv_cost_norm": inv_cost_score,
                     "acc_norm": acc_score,
                     "cost": model.cost,
                     "accuracy": acc,
+                    "sae_circuit_type": sae_circuit_info["circuit_type"],
+                    "sae_sparsity_ratio": sae_circuit_info["sparsity_ratio"],
+                    "attention_mean_entropy": attn_signals.mean_head_entropy,
+                    "attention_sink_ratio": attn_signals.attention_sink_ratio,
+                    "induction_head_score": attn_signals.induction_head_score,
+                    "structural_complexity_score": attn_signals.structural_complexity_score,
                 },
             )
 

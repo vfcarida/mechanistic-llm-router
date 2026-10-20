@@ -46,7 +46,7 @@ async def test_causal_probe_policy_leakage_boundary() -> None:
     assert params == ["prompt"], f"Policy route() must only accept prompt, found: {params}"
 
     # Verify route execution produces valid model decision
-    decision = await policy.route("Qual é o saldo da minha conta corrente?")
+    decision = await policy.route("What is the balance of my checking account?")
     assert decision in MODEL_POOL
 
 
@@ -63,7 +63,7 @@ def test_causal_probe_tuning_on_dev_cases() -> None:
     dev_cases = [
         EvalCase(
             case_id=f"case_{i}",
-            prompt=f"Pergunta de teste {i}",
+            prompt=f"Evaluation query {i}",
             reference_tier=TaskComplexity.ROUTINE if i % 2 == 0 else TaskComplexity.COMPLEX,
             per_model_outcome={
                 "SLM-BERTau-Local": 0.9 if i % 2 == 0 else 0.2,

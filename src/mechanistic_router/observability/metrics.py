@@ -1,6 +1,7 @@
-"""OpenTelemetry FinOps and Observability Metrics Module."""
+"""OpenTelemetry FinOps, GenAI, and Mechanistic Observability Metrics Module."""
 
 import logging
+from typing import Any
 
 from opentelemetry import metrics
 from opentelemetry.exporter.prometheus import PrometheusMetricReader
@@ -12,12 +13,14 @@ logger = logging.getLogger(__name__)
 
 
 class RouterMetrics:
-    """OpenTelemetry instrumentation manager for FinOps cost tracking and performance observability.
+    """OpenTelemetry instrumentation manager for FinOps cost tracking and mechanistic observability.
 
     Exposes quantitative metrics:
     - Incremental router inference latency vs raw endpoint execution latency.
     - Delta financial cost tracking (calculated USD saved per query).
     - Statistical distribution of routing traffic pathways over time.
+    - Mechanistic white-box telemetry (`gen_ai.mechanistic.d_eff`, `gen_ai.mechanistic.fisher_j`,
+      `gen_ai.mechanistic.epistemic_uncertainty`, and `gen_ai.mechanistic.abstention_escalations`).
     """
 
     def __init__(self, service_name: str = "mechanistic-llm-router"):
@@ -72,6 +75,28 @@ class RouterMetrics:
             unit="1",
         )
 
+        # OpenTelemetry Mechanistic White-Box Semantic Convention Instruments
+        self.genai_mechanistic_d_eff = self.meter.create_histogram(
+            name="gen_ai.mechanistic.d_eff",
+            description="Effective dimensionality (d_eff) of residual-stream representation.",
+            unit="1",
+        )
+        self.genai_mechanistic_fisher_j = self.meter.create_histogram(
+            name="gen_ai.mechanistic.fisher_j",
+            description="Normalized Fisher Information sensitivity / complexity score.",
+            unit="1",
+        )
+        self.genai_mechanistic_epistemic_uncertainty = self.meter.create_histogram(
+            name="gen_ai.mechanistic.epistemic_uncertainty",
+            description="Normalized binary Shannon entropy H_2(p) of routing boundary.",
+            unit="1",
+        )
+        self.genai_mechanistic_abstention_escalations = self.meter.create_counter(
+            name="gen_ai.mechanistic.abstention_escalations",
+            description="Total uncertainty-triggered conformal abstention escalations.",
+            unit="1",
+        )
+
         self._exporter_started = False
 
     def start_exporter(self, port: int = 9090) -> None:
@@ -95,6 +120,7 @@ class RouterMetrics:
         router_latency_ms: float,
         endpoint_latency_ms: float,
         cost_saved_usd: float,
+        signals: dict[str, Any] | None = None,
     ) -> None:
         """Records telemetry data points for a single request execution route.
 
@@ -104,6 +130,7 @@ class RouterMetrics:
             router_latency_ms: Router decision latency in ms.
             endpoint_latency_ms: Upstream execution latency in ms.
             cost_saved_usd: Financial savings delta in USD.
+            signals: Optional dictionary of per-model ProbingSignals for mechanistic telemetry.
         """
         # Legacy attributes
         attributes = {"target_model": route_name, "strategy": strategy}
@@ -124,3 +151,23 @@ class RouterMetrics:
         )
         self.genai_cost_saved.add(cost_saved_usd, attributes=genai_attributes)
         self.genai_routing_requests.add(1, attributes=genai_attributes)
+
+        # Record Mechanistic White-Box Telemetry when probing signals are available
+        if signals:
+            selected_sig = signals.get(route_name) or next(iter(signals.values()), None)
+            if selected_sig is not None:
+                d_eff_val = float(getattr(selected_sig, "d_eff_mean", 0.0))
+                fisher_val = float(getattr(selected_sig, "fisher_j_norm", 0.0))
+                self.genai_mechanistic_d_eff.record(d_eff_val, attributes=genai_attributes)
+                self.genai_mechanistic_fisher_j.record(fisher_val, attributes=genai_attributes)
+
+                extra = getattr(selected_sig, "extra_metadata", None) or {}
+                if "epistemic_uncertainty" in extra and extra["epistemic_uncertainty"] is not None:
+                    self.genai_mechanistic_epistemic_uncertainty.record(
+                        float(extra["epistemic_uncertainty"]),
+                        attributes=genai_attributes,
+                    )
+                if extra.get("abstention_escalated"):
+                    self.genai_mechanistic_abstention_escalations.add(
+                        1, attributes=genai_attributes
+                    )

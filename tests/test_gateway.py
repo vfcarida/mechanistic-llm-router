@@ -107,7 +107,7 @@ def test_gateway_x_router_strategy_header(mock_acompletion: AsyncMock) -> None:
 
     payload = {
         "model": "mechanistic-auto",
-        "messages": [{"role": "user", "content": "Consulta rápida de fatura"}],
+        "messages": [{"role": "user", "content": "Quick statement balance inquiry"}],
     }
     response = client.post(
         "/v1/chat/completions",

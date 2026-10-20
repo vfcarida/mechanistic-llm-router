@@ -1,23 +1,24 @@
 # Mechanistic LLM Router
 
-> [!WARNING]
-> **Status: Research/demo artifact.** The router's simulated baseline computes activation quantities (`d_eff`, Fisher J, SAE features) for illustration. Causal probe experiments on real transformer backends (`SmolLM-135M`) are implemented in [`probing/`](file:///c:/Users/vinicius/Documents/GeminiCodes/mechanistic-llm-router/src/mechanistic_router/probing/) and documented in [`MECHANISTIC_SPIKE_REPORT.md`](file:///c:/Users/vinicius/Documents/GeminiCodes/mechanistic-llm-router/docs/MECHANISTIC_SPIKE_REPORT.md).
+> [!NOTE]
+> **Architecture & Maturity Status:** The repository provides both an empirical causal probe router (`CausalProbeRouter`) with finite-sample Conformal Risk Control (`ConformalRiskController`) and counterfactual directional ablation (`CausalAblationHarness`), and a spectral/topological reference router (`MechanisticRouter` / `SimulatedRouter`). Empirical findings are documented in [`MECHANISTIC_SPIKE_REPORT.md`](MECHANISTIC_SPIKE_REPORT.md) and [`BENCHMARK_REPORT.md`](BENCHMARK_REPORT.md).
 
-Welcome to the documentation for **Mechanistic LLM Router**, an open-source research prototype and high-performance API gateway investigating multi-model orchestration via **Encoder-Target Decoupling**, prefill activation inspection, and Sparse Autoencoder (SAE) cognitive circuit analysis.
+Welcome to the documentation for **Mechanistic LLM Router**, an open-source white-box routing engine and OpenAI-compatible API gateway investigating multi-model orchestration via **Encoder-Target Decoupling**, prefill activation inspection, Conformal Risk Control, and Sparse Autoencoder (SAE) cognitive circuit analysis.
 
 ---
 
 ## Key Highlights
 
-- **Encoder-Target Decoupling**: Intercepts unpooled prefill activations $A \in \mathbb{R}^{S \times D}$ from a lightweight shared encoder to estimate query difficulty before invoking expensive frontier models.
-- **Mechanistic Signals**:
-  - **Effective Dimensionality ($d_{\text{eff}}$)**: SVD entropy across representation layers assessing token dispersion.
+- **Encoder-Target Decoupling**: Intercepts unpooled prefill activations $A \in \mathbb{R}^{S \times D}$ from a lightweight encoder to estimate query difficulty before invoking expensive frontier models.
+- **Mechanistic & Statistical Signals**:
+  - **Conformal Risk Control (`ConformalRiskController`)**: Finite-sample risk calibration ($\mathbb{E}[\ell] \le \alpha$) and binary Shannon entropy ($H_2(p)$) abstention across multi-tier model cascades.
+  - **Linear Activation Probes & Causal Ablation**: Layer-wise probes (`LinearActivationProbe`) validated via counterfactual directional projection (`CausalAblationHarness`) against $K=50$ random subspace controls.
+  - **Effective Dimensionality ($d_{\text{eff}}$) & Top-K SAE Circuits**: SVD spectrum entropy across representation layers and `SAEEngine` active circuit extraction.
   - **Fisher Discriminant ($J$)**: Evaluates candidate model separability across representation clusters.
-  - **Linear Activation Probes**: Real layer-wise probes validated by causal ablation against random subspace controls.
-- **Drop-in OpenAI Gateway**: FastAPI `/v1/chat/completions` REST server with token-bucket rate limiting, per-key concurrency locking, and payload size validation.
+- **Drop-in OpenAI Gateway**: FastAPI `/v1/chat/completions` REST and SSE server with token-bucket rate limiting, per-key concurrency locking, and payload size validation.
 - **Universal Provider Dispatch**: Built on LiteLLM with exponential backoff retries across OpenAI, Anthropic, Bedrock, Vertex, and local Ollama/vLLM endpoints.
 - **FinOps & OpenTelemetry Observability**: Real-time Prometheus metrics tracking router latency, endpoint latency deltas, and USD savings compared to frontier oracle models.
-- **Rigorous Evaluation Harness**: Paired bootstrap confidence intervals (95% CI), disjoint prompt splits, and Pareto frontier area-under-curve analysis.
+- **Rigorous Evaluation Harness**: Paired bootstrap confidence intervals (95% CI), prompt-disjoint splits, and Pareto frontier area-under-curve analysis.
 
 ---
 
@@ -56,4 +57,4 @@ flowchart TD
 - **[RouterBench Evaluation](guides/routerbench.md)**: Downloading RouterBench and benchmarking against baseline policies.
 - **[Baseline Record](BASELINE.md)**: Quality gates, empirical benchmarks, and label leakage inventory.
 - **[Mechanistic Spike Report](MECHANISTIC_SPIKE_REPORT.md)**: Empirical report on transformer prefill probing and causal interventions.
-- **[Contributing](file:///c:/Users/vinicius/Documents/GeminiCodes/mechanistic-llm-router/CONTRIBUTING.md)**: Development guidelines, PR workflow, and quality gates.
+- **[Benchmark Report](BENCHMARK_REPORT.md)**: Zero-leakage Pareto benchmark and paired bootstrap evaluation across routing policies.

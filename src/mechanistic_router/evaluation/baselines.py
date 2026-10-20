@@ -135,7 +135,7 @@ class LengthThresholdPolicy(BasePolicy):
 
 
 class LearnedLogisticPolicy(BasePolicy):
-    """Learned routing baseline (RouteLLM S-MLR-1 style): TF-IDF + Logistic Regression."""
+    """Learned routing baseline (RouteLLM-style): TF-IDF + Logistic Regression."""
 
     name: str = "LearnedLogistic (RouteLLM-Style)"
 

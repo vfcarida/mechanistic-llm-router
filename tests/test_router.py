@@ -4,8 +4,8 @@ import pytest
 
 from mechanistic_router.config import DEFAULT_CONFIG
 from mechanistic_router.core.encoder import SharedTrunkEncoder
-from mechanistic_router.core.router import MechanisticRouter
 from mechanistic_router.models.pool import MODEL_POOL
+from mechanistic_router.routers.mechanistic import MechanisticRouter
 
 
 @pytest.fixture
@@ -17,7 +17,7 @@ def legacy_router() -> MechanisticRouter:
 @pytest.mark.asyncio
 async def test_router_routine_task(legacy_router: MechanisticRouter) -> None:
     """Verify routine prompt routes without explicit label parameter."""
-    prompt = "Qual o meu saldo atual?"
+    prompt = "What is my current balance?"
     decision = await legacy_router.route(prompt)
     assert decision.selected_model == "SLM-BERTau-Local"
     assert decision.signals["SLM-BERTau-Local"].is_competent is True
@@ -26,7 +26,7 @@ async def test_router_routine_task(legacy_router: MechanisticRouter) -> None:
 @pytest.mark.asyncio
 async def test_router_moderate_task(legacy_router: MechanisticRouter) -> None:
     """Verify moderate prompt routes without explicit label parameter."""
-    prompt = "Por que meu cartão de crédito foi recusado ontem à noite?"
+    prompt = "Why was my credit card declined last night?"
     decision = await legacy_router.route(prompt)
     assert decision.selected_model == "LLM-Mid-Tier"
     assert decision.signals["LLM-Mid-Tier"].is_competent is True
@@ -35,7 +35,7 @@ async def test_router_moderate_task(legacy_router: MechanisticRouter) -> None:
 @pytest.mark.asyncio
 async def test_router_complex_task(legacy_router: MechanisticRouter) -> None:
     """Verify complex prompt routes without explicit label parameter."""
-    prompt = "Análise detalhada de DTI e LTV para aprovação de crédito rural."
+    prompt = "Detailed analysis of DTI and LTV for commercial loan approval."
     decision = await legacy_router.route(prompt)
     assert decision.selected_model == "LLM-Frontier-Oracle"
     assert decision.signals["LLM-Frontier-Oracle"].is_competent is True
@@ -48,7 +48,7 @@ async def test_lambda_elasticity() -> None:
     encoder = SharedTrunkEncoder(rich_config)
     router_rich = MechanisticRouter(encoder, MODEL_POOL, rich_config)
 
-    prompt = "Oi"
+    prompt = "Hi"
     decision = await router_rich.route(prompt)
     assert decision.selected_model == "LLM-Frontier-Oracle"
 
@@ -74,14 +74,14 @@ async def test_router_strict_validation(legacy_router: MechanisticRouter) -> Non
 @pytest.mark.asyncio
 async def test_effective_dimensionality_is_dynamic(legacy_router: MechanisticRouter) -> None:
     """Verify d_eff dynamic behavior without label leakage."""
-    prompt_short = "Saldo."
+    prompt_short = "Balance."
     decision_short = await legacy_router.route(prompt_short)
     d_eff_short = decision_short.signals["SLM-BERTau-Local"].d_eff_mean
 
     prompt_long = (
-        "Preciso de uma análise completa do meu perfil de crédito considerando "
-        "DTI, LTV, histórico de utilização de crédito rotativo e projeção de "
-        "capacidade de pagamento para os próximos 12 meses."
+        "Provide a comprehensive analysis of my credit profile considering "
+        "DTI, LTV, revolving credit utilization history, and 12-month "
+        "repayment capacity projection."
     )
     decision_long = await legacy_router.route(prompt_long)
     d_eff_long = decision_long.signals["SLM-BERTau-Local"].d_eff_mean
@@ -94,9 +94,9 @@ def test_core_router_deprecation_warning() -> None:
     """Verify importing mechanistic_router.core.router emits DeprecationWarning."""
     import importlib
 
-    import mechanistic_router.core.router as legacy_router_mod
-
     with pytest.deprecated_call():
+        import mechanistic_router.core.router as legacy_router_mod
+
         importlib.reload(legacy_router_mod)
 
 
@@ -108,7 +108,7 @@ def test_estimate_complexity_lru_cache() -> None:
     info_before = estimate_complexity.cache_info()
     assert info_before.hits == 0
 
-    prompt = "Qual o meu saldo atual na conta?"
+    prompt = "What is my current checking account balance?"
     res1 = estimate_complexity(prompt)
     res2 = estimate_complexity(prompt)
 

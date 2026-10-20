@@ -1,6 +1,6 @@
 site_name: Mechanistic LLM Router Documentation
-site_description: Research Prototype for LLM Routing via Encoder-Target Decoupling, Prefill Probing & Sparse Autoencoders
-site_author: Vinicius Carida
+site_description: White-Box LLM Routing via Encoder-Target Decoupling, Causal Activation Probing, Conformal Risk Control & Sparse Autoencoders
+site_author: Vinicius Caridá
 
 theme:
   name: material
@@ -41,3 +41,5 @@ nav:
       - Baseline Record: BASELINE.md
       - Mechanistic Spike: MECHANISTIC_SPIKE_REPORT.md
       - Benchmark Report: BENCHMARK_REPORT.md
+  - References & Bibliography: REFERENCES.md
+

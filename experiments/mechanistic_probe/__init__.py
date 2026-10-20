@@ -1,4 +1,4 @@
-"""Mechanistic Probe Research Spike (MLR-T06).
+"""Mechanistic Probe Research Spike.
 
 Extracts real activations from local open-weight models, trains lightweight probes,
 validates directionality causally via directional projection/ablation vs random controls,

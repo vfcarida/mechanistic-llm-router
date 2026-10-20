@@ -53,7 +53,7 @@ async def test_causal_probe_router_routing() -> None:
         threshold=0.5,
     )
 
-    decision = await router.route(RoutingRequest(prompt="Consulta simples de saldo"))
+    decision = await router.route(RoutingRequest(prompt="Simple account balance inquiry"))
     assert decision.strategy_used == "CausalProbeRouter"
     assert decision.selected_model == router.cheap_model
     assert "prob_strong" in decision.signals[router.cheap_model].extra_metadata
@@ -61,7 +61,7 @@ async def test_causal_probe_router_routing() -> None:
 
     # High difficulty query -> high prob of needing strong model
     mock_probe.predict_proba.return_value = np.array([0.85], dtype=np.float32)
-    decision_hard = await router.route("Calculo avançado de CET com juros compostos")
+    decision_hard = await router.route("Advanced APR calculation with compound interest")
     assert decision_hard.selected_model == router.strong_model
 
 

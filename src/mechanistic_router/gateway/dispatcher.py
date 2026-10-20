@@ -3,8 +3,11 @@
 import asyncio
 import json
 import logging
+import os
 from collections.abc import AsyncGenerator
 from typing import Any
+
+os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "True")
 
 import litellm
 

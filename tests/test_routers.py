@@ -54,7 +54,7 @@ async def test_mechanistic_router(
     """Test MechanisticRouter strategy probing signals and decisions."""
     router = MechanisticRouter(mock_encoder, model_pool, default_config)
 
-    req_routine = RoutingRequest(prompt="Qual o valor da minha fatura?")
+    req_routine = RoutingRequest(prompt="What is my statement balance?")
     decision_routine = await router.route(req_routine)
     assert decision_routine.strategy_used == "MechanisticRouter"
     assert decision_routine.selected_model in model_pool
@@ -88,12 +88,12 @@ def test_estimate_complexity_boundary_cases() -> None:
     assert estimate_complexity("   \n\t   ") == TaskComplexity.ROUTINE
 
     # Short routine prompt
-    assert estimate_complexity("Saldo em conta") == TaskComplexity.ROUTINE
+    assert estimate_complexity("Account balance") == TaskComplexity.ROUTINE
     assert estimate_complexity("Hello world") == TaskComplexity.ROUTINE
 
     # Moderate markers or length (> 10 words)
     assert (
-        estimate_complexity("Gostaria de ver o detalhamento das transações")
+        estimate_complexity("I would like to see the breakdown of transactions")
         == TaskComplexity.MODERATE
     )
     assert estimate_complexity("Explain difference between these two") == TaskComplexity.MODERATE
@@ -102,10 +102,10 @@ def test_estimate_complexity_boundary_cases() -> None:
     eleven_words = "one two three four five six seven eight nine ten eleven"
     assert estimate_complexity(eleven_words) == TaskComplexity.MODERATE
 
-    # Complex markers (English and Portuguese)
+    # Complex markers
     assert estimate_complexity("Calculate DTI and LTV for loan") == TaskComplexity.COMPLEX
     assert (
-        estimate_complexity("Análise de portfólio e diversificação de risco")
+        estimate_complexity("Portfolio analysis and risk diversification strategy")
         == TaskComplexity.COMPLEX
     )
 
